@@ -17,6 +17,7 @@ class ModelConfig:
     base_url: str | None = None
     api_key: str | None = None
     api_key_env: str | None = None
+    reasoning_max_tokens: int | None = None
     fake_responses: list[str] | None = None
     transport: httpx.BaseTransport | None = None
     usage: dict = field(
@@ -165,6 +166,8 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
         "max_tokens": cfg.max_tokens,
         "messages": messages,
     }
+    if cfg.provider == "openrouter" and cfg.reasoning_max_tokens:
+        payload["reasoning"] = {"max_tokens": int(cfg.reasoning_max_tokens)}
     if cfg.provider == "openrouter":
         payload["response_format"] = {
             "type": "json_schema",

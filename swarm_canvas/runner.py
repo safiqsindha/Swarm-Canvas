@@ -233,6 +233,7 @@ def _model_config(model: dict) -> ModelConfig:
         base_url=model.get("base_url"),
         api_key=model.get("api_key"),
         api_key_env=model.get("api_key_env"),
+        reasoning_max_tokens=model.get("reasoning_max_tokens"),
         fake_responses=list(responses) if responses else None,
     )
 
