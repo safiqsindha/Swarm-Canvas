@@ -1,0 +1,6 @@
+openpyxl
+pillow
+imageio
+pyyaml
+httpx
+pytest

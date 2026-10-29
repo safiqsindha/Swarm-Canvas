@@ -1,0 +1,10 @@
+Read the exchange below and split the run into ordered stages of collaboration.
+Condition: {condition}
+Rounds played: {rounds}
+Exchange:
+{transcript}
+
+Reply with one JSON object of this shape:
+{"stages":[{"name":"short label","rounds":[1,10],"evidence":"what in the exchange supports this"}]}
+Use only the exchange. Do not invent painters, motives, or a depicted scene.
+If the exchange is empty, return {"stages":[]}.

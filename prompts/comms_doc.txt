@@ -1,0 +1,4 @@
+A numbered log is shared by every painter.
+You may post up to 2 notes each round. Each note is kept to 200 characters; longer notes are cut.
+You may mark a log line as read by putting its line number in acks. Those marks do not use your note allowance.
+The turn shows new lines since you last looked, plus recent lines for context.

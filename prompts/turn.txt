@@ -1,0 +1,11 @@
+Round {round} of {rounds}.
+Painter: {handle}
+Columns run from A through X ({cols} across). Rows run from 1 through {rows}. A blank cell is a single dot.
+{canvas}
+
+PALETTE: {palette}
+CATALOG_LEFT: {budget}
+Scratchpad:
+{scratchpad}
+{inbox_block}
+{reply_rules}
