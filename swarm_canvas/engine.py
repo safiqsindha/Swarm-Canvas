@@ -113,7 +113,7 @@ class Canvas:
 
     def board_check(self) -> str:
         """A free reading of the grid. Counts only, no advice and no target."""
-        blank_by_column = []
+        blank_counts = []
         open_columns = []
         blanks = 0
         for col in range(self.cols):
@@ -124,11 +124,13 @@ class Canvas:
                 if not state or not state.color:
                     empty += 1
             blanks += empty
-            blank_by_column.append(f"{letter} {empty}")
+            blank_counts.append((empty, letter))
             if empty == self.rows:
                 open_columns.append(letter)
         painted = self.cols * self.rows - blanks
         open_text = " ".join(open_columns) if open_columns else "none"
+        ranked = sorted(blank_counts, key=lambda item: (-item[0], item[1]))
+        blank_by_column = [f"{letter} {empty}" for empty, letter in ranked]
         return (
             f"CHECK {painted} painted, {blanks} blank. "
             f"Open columns: {open_text}. "

@@ -99,8 +99,7 @@ def test_board_check_counts_blanks_and_names_open_columns():
     check = canvas.board_check()
     assert "CHECK 1 painted, 383 blank." in check
     assert "Open columns: B C" in check
-    assert "A 15" in check
-    assert "B 16" in check
+    assert check.index("Blank cells: B 16") < check.index("A 15")
     for col in range(canvas.cols):
         for row in range(canvas.rows):
             canvas.cells[(col, row)] = CellState("S", "a1")

@@ -1,8 +1,10 @@
-Reply with one JSON object and nothing else. Use this shape, omitting any key you are not using:
-{"paints":[{"column":"A","row":1,"color":"S"}],"requests":["O"],"messages":["I will hold the left columns."],"acks":[1],"scratchpad":""}
+Reply with one JSON object and nothing else.
+paints is a list of up to 8 objects. Each object has column, row, and color.
 column is one letter from A to X. row is an integer from 1 to 16. Do not join them into one string.
-paints holds at most 8 objects. Each color must be one you already hold, or a catalog color already granted to you.
+Each color must be one you already hold, or a catalog color already granted to you.
 requests is a list of catalog color codes.
 messages is a list of short notes. The first 2 are kept, each cut at 200 characters.
 acks is a list of log line numbers you have read. They are free and do not use the note cap.
+scratchpad is a short note you keep for the next round. Use it when a plan should survive the turn.
 A name is at most 20 characters. It is kept on the first round, or later only if a message in this same object announces it by including the name.
+Omit any key you are not using.
