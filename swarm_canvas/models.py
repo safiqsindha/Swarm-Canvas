@@ -198,9 +198,24 @@ def _post_chat(url: str, payload: dict, cfg: ModelConfig) -> tuple[str, dict]:
         )
         response.raise_for_status()
         body = response.json()
-    text = body["choices"][0]["message"]["content"]
+    text = _message_text(body["choices"][0]["message"])
     usage = body.get("usage") or {}
-    return text or "", {
+    return text, {
         "input": usage.get("prompt_tokens", 0),
         "output": usage.get("completion_tokens", 0),
     }
+
+
+def _message_text(message: dict) -> str:
+    content = message.get("content")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        chunks = []
+        for part in content:
+            if isinstance(part, str):
+                chunks.append(part)
+            elif isinstance(part, dict):
+                chunks.append(str(part.get("text") or ""))
+        return "".join(chunks)
+    return ""

@@ -391,16 +391,16 @@ def _prepare(slot, action, round_num, budget, comms_enabled, comms_cfg, slots) -
 def _log_rejections(prepared, slots, run_id, round_num, events) -> None:
     for slot, prep in zip(slots, prepared):
         if prep.parse_error:
-            _write(
-                events,
-                {
-                    "run": run_id,
-                    "round": round_num,
-                    "agent": slot.handle,
-                    "type": "parse_error",
-                    "applied": False,
-                },
-            )
+            event = {
+                "run": run_id,
+                "round": round_num,
+                "agent": slot.handle,
+                "type": "parse_error",
+                "applied": False,
+            }
+            if prep.raw:
+                event["raw"] = prep.raw
+            _write(events, event)
         for item in prep.rejections:
             event = {"run": run_id, "round": round_num, "agent": slot.handle}
             event.update(item)
@@ -558,3 +558,4 @@ def _git_commit() -> str:
 
 def _write(handle, event: dict) -> None:
     handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+    handle.flush()

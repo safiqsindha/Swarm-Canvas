@@ -21,6 +21,7 @@ class Prepared:
     scratchpad: str | None = None
     passed: bool = False
     parse_error: bool = False
+    raw: str = ""
 
 
 def _as_int(value) -> int | None:
@@ -61,6 +62,8 @@ def validate_action(
     prepared = Prepared()
     if not isinstance(action, dict) or action.get("_parse_error"):
         prepared.parse_error = bool(isinstance(action, dict) and action.get("_parse_error"))
+        if isinstance(action, dict):
+            prepared.raw = str(action.get("_raw") or "")[:180]
         prepared.passed = True
         if not isinstance(action, dict):
             prepared.rejections.append({"type": "invalid", "reason": "action_not_object"})

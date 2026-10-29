@@ -78,8 +78,8 @@ class LLMAgent:
     def _ask(self, messages: list[dict]) -> str:
         try:
             return call_model(messages, self.model_cfg)
-        except Exception:
-            return ""
+        except Exception as exc:
+            return f"{type(exc).__name__}: {exc}"
 
 
 def parse_model_json(raw: str) -> dict | None:
