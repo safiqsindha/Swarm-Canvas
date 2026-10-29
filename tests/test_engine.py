@@ -1,4 +1,4 @@
-from swarm_canvas.engine import Canvas, Paint, parse_cell
+from swarm_canvas.engine import Canvas, CellState, Paint, parse_cell
 from swarm_canvas.validate import validate_action
 
 
@@ -88,3 +88,22 @@ def test_text_grid_marks_blanks():
     assert "A" in text.splitlines()[0] and "X" in text.splitlines()[0]
     assert text.splitlines()[1].startswith(" 1 ")
     assert "." in text
+
+
+def test_board_check_counts_blanks_and_names_open_columns():
+    canvas = Canvas()
+    check = canvas.board_check()
+    assert check.startswith("CHECK 0 painted, 384 blank.")
+    assert "Open columns: A B C D E F G H I J K L M N O P Q R S T U V W X." in check
+    canvas.cells[(0, 0)] = CellState("S", "a1")
+    check = canvas.board_check()
+    assert "CHECK 1 painted, 383 blank." in check
+    assert "Open columns: B C" in check
+    assert "A 15" in check
+    assert "B 16" in check
+    for col in range(canvas.cols):
+        for row in range(canvas.rows):
+            canvas.cells[(col, row)] = CellState("S", "a1")
+    filled = canvas.board_check()
+    assert filled.startswith("CHECK 384 painted, 0 blank.")
+    assert "Open columns: none." in filled

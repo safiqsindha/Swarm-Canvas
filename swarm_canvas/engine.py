@@ -110,3 +110,27 @@ class Canvas:
                 shown.append(state.color if state and state.color else ".")
             lines.append(f"{row + 1:2d} " + " ".join(shown))
         return "\n".join(lines)
+
+    def board_check(self) -> str:
+        """A free reading of the grid. Counts only, no advice and no target."""
+        blank_by_column = []
+        open_columns = []
+        blanks = 0
+        for col in range(self.cols):
+            letter = COL_LETTERS[col]
+            empty = 0
+            for row in range(self.rows):
+                state = self.cells.get((col, row))
+                if not state or not state.color:
+                    empty += 1
+            blanks += empty
+            blank_by_column.append(f"{letter} {empty}")
+            if empty == self.rows:
+                open_columns.append(letter)
+        painted = self.cols * self.rows - blanks
+        open_text = " ".join(open_columns) if open_columns else "none"
+        return (
+            f"CHECK {painted} painted, {blanks} blank. "
+            f"Open columns: {open_text}. "
+            f"Blank cells: {', '.join(blank_by_column)}."
+        )

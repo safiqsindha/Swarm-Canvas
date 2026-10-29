@@ -330,6 +330,7 @@ def _observe(
             cols=cols,
             rows=rows,
             canvas=canvas_text,
+            check=canvas.board_check(),
             palette=" ".join(slot.palette),
             budget=remaining,
             scratchpad=slot.scratchpad,
