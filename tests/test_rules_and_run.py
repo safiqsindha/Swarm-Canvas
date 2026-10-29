@@ -1,4 +1,6 @@
 import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -288,3 +290,99 @@ def test_unparseable_model_output_repairs_once_then_passes(tmp_path):
     events = _events(run.run_dir)
     assert sum(event["type"] == "parse_error" for event in events) == 4
     assert sum(event["type"] == "pass" for event in events) == 4
+
+
+class _SwarmChatHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        body = json.loads(self.rfile.read(length).decode())
+        self.server.received.append(
+            {
+                "path": self.path,
+                "auth": self.headers.get("Authorization"),
+                "body": body,
+            }
+        )
+        self.send_response(self.server.status_code)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, fmt, *args):
+        return
+
+
+def _swarmchat_server(status_code=200):
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _SwarmChatHandler)
+    server.received = []
+    server.status_code = status_code
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server
+
+
+def _swarmchat_cfg(tmp_path, server):
+    tokens = tmp_path / "tokens.yaml"
+    tokens.write_text("a1: tok-a1\na2: tok-a2\na3: tok-a3\na4: tok-a4\n", encoding="utf-8")
+    cfg = _cfg(kind="swarmchat", condition="c2b_swarmchat", output_dir=str(tmp_path), rounds=2)
+    cfg["comms"]["server_url"] = f"http://127.0.0.1:{server.server_address[1]}"
+    cfg["comms"]["token_file"] = str(tokens)
+    return cfg
+
+
+def test_swarmchat_mirror_posts_only_accepted_notes(tmp_path):
+    server = _swarmchat_server()
+    try:
+        agents = [
+            Scripted(
+                [
+                    {"messages": ["one", "two", "three"], "paints": [{"cell": "A1", "color": "S"}]},
+                    {},
+                ]
+            ),
+            Scripted([{"messages": ["right"], "acks": [99]}, {"acks": [1]}]),
+            Scripted([{}, {}]),
+            Scripted([{}, {}]),
+        ]
+        result = run_config(_swarmchat_cfg(tmp_path, server), render=False, agents=agents)
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    events = _events(result.run_dir)
+    applied = [event["text"] for event in events if event["type"] == "message" and event.get("applied")]
+    posted = [item["body"]["text"] for item in server.received if item["body"]["kind"] == "message"]
+    assert applied == posted
+    assert set(posted) == {"one", "two", "right"}
+    assert "three" not in posted
+    assert all(item["path"] == "/channels/canvas/messages" for item in server.received)
+    for item in server.received:
+        assert item["auth"] == f"Bearer tok-{item['body']['agent']}"
+    assert any(
+        event["type"] == "ack" and not event.get("applied") and event["line"] == 99 for event in events
+    )
+    assert not any("read #99" in item["body"]["text"] for item in server.received)
+    ack_posts = [item for item in server.received if item["body"]["kind"] == "ack"]
+    assert len(ack_posts) == 1
+    assert ack_posts[0]["body"]["text"].startswith("✓ ")
+    assert "one" in (result.run_dir / "doc_log.txt").read_text(encoding="utf-8")
+
+
+def test_swarmchat_server_error_keeps_the_local_note(tmp_path):
+    server = _swarmchat_server(status_code=500)
+    try:
+        agents = [
+            Scripted([{"messages": ["still local"]}, {}]),
+            Scripted([{}, {}]),
+            Scripted([{}, {}]),
+            Scripted([{}, {}]),
+        ]
+        result = run_config(_swarmchat_cfg(tmp_path, server), render=False, agents=agents)
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert server.received and server.received[0]["body"]["text"] == "still local"
+    log = (result.run_dir / "doc_log.txt").read_text(encoding="utf-8")
+    assert "still local" in log
+    events = _events(result.run_dir)
+    assert any(event["type"] == "message" and event.get("applied") and event["text"] == "still local" for event in events)
