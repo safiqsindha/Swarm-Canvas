@@ -1,1 +1,1 @@
-That reply was not a single JSON object. Try once more. Return one JSON object and no surrounding prose.
+That reply was not a single JSON object. Try once more. Return one JSON object and no surrounding prose. paints is a list of objects with column, row, and color. column is a letter A through X. row is an integer 1 through 16.

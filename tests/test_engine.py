@@ -60,6 +60,29 @@ def test_invalid_cell_and_unheld_color():
     assert parse_cell("A0") is None
 
 
+def test_column_and_row_are_joined_and_a_swapped_string_is_not():
+    prepared = validate_action(
+        handle="a1",
+        action={
+            "paints": [
+                {"column": "I", "row": 8, "color": "K"},
+                {"column": "i", "row": "2", "color": "S"},
+                {"column": "8", "row": "I", "color": "S"},
+                {"cell": "8I", "color": "S"},
+            ]
+        },
+        round_num=2,
+        palette=["S", "K"],
+        paint_budget=8,
+        comms_enabled=False,
+        max_messages=2,
+        max_chars=200,
+    )
+    assert [paint.cell for paint in prepared.paints] == ["I8", "I2"]
+    reasons = [item["reason"] for item in prepared.rejections if item["type"] == "invalid"]
+    assert reasons.count("cell") == 2
+
+
 def test_text_grid_marks_blanks():
     text = Canvas().to_text()
     assert "A" in text.splitlines()[0] and "X" in text.splitlines()[0]

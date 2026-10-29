@@ -30,6 +30,34 @@ class ModelConfig:
     calls_log: list[list[dict]] = field(default_factory=list)
 
 
+_COLUMNS = [chr(ord("A") + i) for i in range(24)]
+_PAINTER_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "name": {"type": "string"},
+        "scratchpad": {"type": "string"},
+        "requests": {"type": "array", "items": {"type": "string"}},
+        "messages": {"type": "array", "items": {"type": "string"}},
+        "acks": {"type": "array", "items": {"type": "integer"}},
+        "paints": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["column", "row", "color"],
+                "properties": {
+                    "column": {"type": "string", "enum": _COLUMNS},
+                    "row": {"type": "integer", "minimum": 1, "maximum": 16},
+                    "color": {"type": "string"},
+                },
+            },
+        },
+    },
+}
+
+
 def call_model(messages: list[dict], cfg: ModelConfig) -> str:
     """Call one model. Temperature and max_tokens come from cfg. At most 2 retries."""
     if cfg.provider == "fake":
@@ -137,6 +165,25 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
         "max_tokens": cfg.max_tokens,
         "messages": messages,
     }
+    if cfg.provider == "openrouter":
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "painter_action",
+                "strict": False,
+                "schema": _PAINTER_SCHEMA,
+            },
+        }
+    try:
+        return _post_chat(url, payload, cfg)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 400 and "response_format" in payload:
+            payload.pop("response_format")
+            return _post_chat(url, payload, cfg)
+        raise
+
+
+def _post_chat(url: str, payload: dict, cfg: ModelConfig) -> tuple[str, dict]:
     with _client(cfg) as client:
         response = client.post(
             url,

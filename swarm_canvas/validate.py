@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from swarm_canvas.engine import Paint, parse_cell
+from swarm_canvas.engine import COL_LETTERS, Paint, parse_cell
 
 _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _\-]{0,19}$")
 
@@ -31,6 +31,19 @@ def _as_int(value) -> int | None:
     if isinstance(value, str) and value.strip().lstrip("-").isdigit():
         return int(value.strip())
     return None
+
+
+def _paint_cell(item: dict) -> str:
+    """Column and row are the structured form. A cell string is only a fallback."""
+    if "column" in item or "row" in item:
+        column = item.get("column")
+        row = _as_int(item.get("row"))
+        letter = column.strip().upper() if isinstance(column, str) else ""
+        if len(letter) == 1 and letter in COL_LETTERS and row is not None:
+            return f"{letter}{row}"
+        return ""
+    cell = item.get("cell")
+    return cell if isinstance(cell, str) else ""
 
 
 def validate_action(
@@ -146,9 +159,8 @@ def validate_action(
         if not isinstance(item, dict):
             prepared.rejections.append({"type": "invalid", "reason": "paint_not_object"})
             continue
-        cell = item.get("cell")
+        cell_s = _paint_cell(item)
         color = item.get("color")
-        cell_s = cell if isinstance(cell, str) else ""
         color_s = color if isinstance(color, str) else ""
         if parse_cell(cell_s) is None or color_s not in held:
             reason = "cell" if parse_cell(cell_s) is None else "color"

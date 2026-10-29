@@ -1,5 +1,6 @@
-Reply with one JSON object and nothing else.
-Optional keys: name, paints, requests, scratchpad.
-paints is a list of objects with cell and color. At most 8 cells are applied.
+Reply with one JSON object and nothing else. Use this shape, omitting any key you are not using:
+{"paints":[{"column":"A","row":1,"color":"S"}],"requests":["O"],"scratchpad":""}
+column is one letter from A to X. row is an integer from 1 to 16. Do not join them into one string.
+paints holds at most 8 objects. Each color must be one you already hold, or a catalog color already granted to you.
 requests is a list of catalog color codes.
 A name is at most 20 characters and is only kept on the first round.
