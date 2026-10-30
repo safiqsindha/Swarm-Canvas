@@ -349,3 +349,13 @@ def test_native_swarmchat_run_uses_server_reads_and_message_ids(tmp_path):
     assert (result.run_dir / "swarmchat/admin.token").is_file()
     assert not any("token" in key for key in config["swarmchat"])
     assert any(e["type"] == "ack" and not e["applied"] for e in events)
+
+
+def test_non_string_messages_are_rejected():
+    prepared = validate_action(
+        handle="a1", action={"messages": [{"text": "hello"}, "valid"]},
+        round_num=1, palette=["S"], paint_budget=8, comms_enabled=True,
+        max_messages=2, max_chars=200,
+    )
+    assert prepared.messages == ["valid"]
+    assert any(item.get("reason") == "message_not_string" for item in prepared.rejections)

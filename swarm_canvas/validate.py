@@ -98,7 +98,10 @@ def validate_action(
         raw_messages = []
     else:
         for item in raw_messages:
-            text = str(item).replace("\n", " ").strip()
+            if not isinstance(item, str):
+                prepared.rejections.append({"type": "invalid", "reason": "message_not_string"})
+                continue
+            text = item.replace("\n", " ").strip()
             if not text:
                 prepared.rejections.append(
                     {"type": "invalid", "reason": "empty_message"}

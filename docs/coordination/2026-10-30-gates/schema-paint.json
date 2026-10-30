@@ -1,0 +1,122 @@
+{
+  "records": [
+    {
+      "round": 1,
+      "agent": "slot-0",
+      "input": "You are slot-0. Your assigned columns are A-L. Your partner is slot-1. Return JSON with a messages array containing one short message claiming your assigned columns, and no other fields. Also include a paints array with exactly one object: column A, row 1, color S. Return both the communication and paint fields.",
+      "response": "{\"messages\": [\":slot-1: I am slot-0, claiming columns A-L.\"], \"paints\": [{\"column\": \"A\", \"row\": 1, \"color\": \"S\"}]}",
+      "peer_lines": [],
+      "post_ids": [
+        2
+      ],
+      "ack_ids": []
+    },
+    {
+      "round": 1,
+      "agent": "slot-1",
+      "input": "You are slot-1. Your assigned columns are M-X. Your partner is slot-0. Return JSON with a messages array containing one short message claiming your assigned columns, and no other fields. Also include a paints array with exactly one object: column M, row 1, color S. Return both the communication and paint fields.",
+      "response": "{\"messages\": [\":slot-0: I am slot-1, claiming columns M-X.\"], \"paints\": [{\"column\": \"M\", \"row\": 1, \"color\": \"S\"}]}",
+      "peer_lines": [],
+      "post_ids": [
+        3
+      ],
+      "ack_ids": []
+    },
+    {
+      "round": 2,
+      "agent": "slot-0",
+      "input": "You are slot-0. Your assigned columns are A-L. Your partner is slot-1. Here are actual messages from your partner: [{\"number\": 3, \"sender\": \"slot-1\", \"text\": \":slot-0: I am slot-1, claiming columns M-X.\"}]. Return JSON with messages containing one short message confirming your assigned columns and acks containing the integer line number of your partner message. Do not invent line numbers. Also include a paints array with exactly one object: column A, row 1, color S. Return both the communication and paint fields.",
+      "response": "{\"messages\": [\":slot-1: I am slot-0, assigned columns A-L.\"], \"acks\": [3], \"paints\": [{\"column\": \"A\", \"row\": 1, \"color\": \"S\"}]}",
+      "peer_lines": [
+        {
+          "number": 3,
+          "sender": "slot-1",
+          "text": ":slot-0: I am slot-1, claiming columns M-X."
+        }
+      ],
+      "post_ids": [
+        6
+      ],
+      "ack_ids": [
+        3
+      ]
+    },
+    {
+      "round": 2,
+      "agent": "slot-1",
+      "input": "You are slot-1. Your assigned columns are M-X. Your partner is slot-0. Here are actual messages from your partner: [{\"number\": 2, \"sender\": \"slot-0\", \"text\": \":slot-1: I am slot-0, claiming columns A-L.\"}]. Return JSON with messages containing one short message confirming your assigned columns and acks containing the integer line number of your partner message. Do not invent line numbers. Also include a paints array with exactly one object: column M, row 1, color S. Return both the communication and paint fields.",
+      "response": "{\"messages\": [\":slot-0: I am slot-1, claiming columns M-X.\"], \"acks\": [2], \"paints\": [{\"column\": \"M\", \"row\": 1, \"color\": \"S\"}]}",
+      "peer_lines": [
+        {
+          "number": 2,
+          "sender": "slot-0",
+          "text": ":slot-1: I am slot-0, claiming columns A-L."
+        }
+      ],
+      "post_ids": [
+        7
+      ],
+      "ack_ids": [
+        2
+      ]
+    }
+  ],
+  "calls": [
+    {
+      "status": "ok",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "served_model": "nvidia/nemotron-3.5-super-vl:free",
+      "provider": "Nvidia",
+      "response_id": "gen-1793386021-UbfSIiPumhkit2TL40wp",
+      "input_tokens": 95,
+      "output_tokens": 46,
+      "cost_usd": 0,
+      "finish_reason": "stop",
+      "reasoning_tokens": 0,
+      "has_visible_content": true,
+      "elapsed_seconds": 4.4829
+    },
+    {
+      "status": "ok",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "served_model": "nvidia/nemotron-3.5-super-vl:free",
+      "provider": "Nvidia",
+      "response_id": "gen-1793386025-ZFVONjHIdST1vMVBLjcC",
+      "input_tokens": 95,
+      "output_tokens": 46,
+      "cost_usd": 0,
+      "finish_reason": "stop",
+      "reasoning_tokens": 0,
+      "has_visible_content": true,
+      "elapsed_seconds": 43.6615
+    },
+    {
+      "status": "ok",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "served_model": "nvidia/nemotron-3.5-super-vl:free",
+      "provider": "Nvidia",
+      "response_id": "gen-1793386069-Fkm4S6yiSwQuoMJCjUxF",
+      "input_tokens": 150,
+      "output_tokens": 52,
+      "cost_usd": 0,
+      "finish_reason": "stop",
+      "reasoning_tokens": 0,
+      "has_visible_content": true,
+      "elapsed_seconds": 3.881
+    },
+    {
+      "status": "ok",
+      "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+      "served_model": "nvidia/nemotron-3.5-super-vl:free",
+      "provider": "Nvidia",
+      "response_id": "gen-1793386073-xW0ESBoXJx3rDHhkdabp",
+      "input_tokens": 150,
+      "output_tokens": 52,
+      "cost_usd": 0,
+      "finish_reason": "stop",
+      "reasoning_tokens": 0,
+      "has_visible_content": true,
+      "elapsed_seconds": 4.3111
+    }
+  ]
+}
