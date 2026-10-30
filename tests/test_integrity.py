@@ -340,3 +340,18 @@ def test_coordination_schema_is_opt_in_and_never_falls_back():
     schema = requests[0]["response_format"]["json_schema"]["schema"]
     assert schema["required"] == ["messages", "acks", "paints"]
     assert requests[0]["provider"]["max_price"]["completion"] == 0
+
+
+def test_peer_ack_schema_limits_choices_to_exposed_peer_ids():
+    payloads = []
+    def respond(request):
+        payloads.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
+    cfg = ModelConfig(provider="openrouter", name="test/model:free", require_coordination_fields=True,
+                      allowed_ack_lines=[3, 8], transport=httpx.MockTransport(respond))
+    call_model([{"role": "user", "content": "test"}], cfg)
+    ack = payloads[0]["response_format"]["json_schema"]["schema"]["properties"]["acks"]
+    assert ack["items"]["enum"] == [3, 8] and ack["minItems"] == 1
+    cfg.allowed_ack_lines = []
+    call_model([{"role": "user", "content": "test"}], cfg)
+    assert payloads[1]["response_format"]["json_schema"]["schema"]["properties"]["acks"]["maxItems"] == 0

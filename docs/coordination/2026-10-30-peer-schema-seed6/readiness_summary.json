@@ -1,0 +1,103 @@
+{
+  "passed": true,
+  "failures": [],
+  "model_calls": 16,
+  "messages": 16,
+  "applied_paints": 128,
+  "unique_cells": 99,
+  "applied_acks": 21,
+  "run_id": "readiness_scaffolded_s6_daeecd0adbda46dc8de7af4970fb031f",
+  "seed": 6,
+  "rounds": 4,
+  "request_attempts": 16,
+  "task_scores": {
+    "run": "readiness_scaffolded_s6_daeecd0adbda46dc8de7af4970fb031f",
+    "task_mode": "reconstruction",
+    "cells": 384,
+    "painted": 99,
+    "coverage": 0.2578,
+    "target_matches": 89,
+    "target_accuracy": 0.2318,
+    "colors_used": [
+      "S",
+      "W",
+      "Y",
+      "w"
+    ],
+    "overwrites": 0,
+    "correct_cells_destroyed": 4,
+    "redundant_paints": 21,
+    "accuracy_by_round": [
+      {
+        "round": 1,
+        "accuracy": 0.078125
+      },
+      {
+        "round": 2,
+        "accuracy": 0.119792
+      },
+      {
+        "round": 3,
+        "accuracy": 0.195312
+      },
+      {
+        "round": 4,
+        "accuracy": 0.231771
+      }
+    ],
+    "threshold_90": null,
+    "paints": 128,
+    "invalid": 0,
+    "over_budget": 0,
+    "messages": 16,
+    "acks": 21,
+    "grants": 0,
+    "denies": 0,
+    "passes": 0,
+    "parse_errors": 0,
+    "api_errors": 0,
+    "agent_errors": 0,
+    "token_totals": {
+      "calls": 16,
+      "input_tokens": 35337,
+      "output_tokens": 3592,
+      "retries": 0
+    },
+    "observed_models": [
+      "nvidia/nemotron-3.5-super-vl:free"
+    ],
+    "model_metadata_complete": true,
+    "cost_usd": 0,
+    "per_agent": {
+      "slot-3": {
+        "paints": 32,
+        "messages": 4,
+        "acks": 5,
+        "requests": 0
+      },
+      "slot-2": {
+        "paints": 32,
+        "messages": 4,
+        "acks": 5,
+        "requests": 0
+      },
+      "slot-1": {
+        "paints": 32,
+        "messages": 4,
+        "acks": 6,
+        "requests": 0
+      },
+      "slot-0": {
+        "paints": 32,
+        "messages": 4,
+        "acks": 5,
+        "requests": 0
+      }
+    },
+    "final_hash": "5e1c7876d037a0c39d41f1f3095f2ce51083014d5686e9b5c05c6bffc03cb7f1",
+    "reliability_ok": true
+  },
+  "condition": "explicit_fixed_ownership",
+  "assist": true,
+  "gate_scope": "action and communication adherence, not autonomous coordination or benchmark validity"
+}

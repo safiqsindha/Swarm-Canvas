@@ -1,6 +1,6 @@
 # Larger pilot: launch plan
 
-Status: **blocked pending readiness**. This is a development pilot, not a confirmatory experiment. SwarmChat is mandatory for the communication condition; inference is limited to free OpenRouter models. Earlier spontaneous conditions and the assisted condition answer different questions.
+Status: **readiness seeds passed; launcher added; pilot not yet run**. This is a development pilot, not a confirmatory experiment. SwarmChat is mandatory for the communication condition; inference is limited to free OpenRouter models. Earlier spontaneous conditions and the assisted condition answer different questions.
 
 ## Objective and intervention
 
@@ -21,14 +21,18 @@ python -m swarm_canvas.readiness_check --seed 5 --rounds 4 --assist
 python -m swarm_canvas.readiness_check --seed 6 --rounds 4 --assist
 ```
 
-Each run permits at most 32 inference HTTP attempts, 96 across the three, plus any separately documented preflight requests. Successful main calls total 48; retries and JSON repair consume the attempt cap. Pacing is 3.5 seconds globally inside each run. These commands do not themselves check quota in advance; perform the documented preflight before starting. The existing readiness checker limits runs to four rounds and must be extended and tested before attempting a longer pilot.
+Each run permits at most 32 inference HTTP attempts, 96 across the three, plus any separately documented preflight requests. Successful main calls total 48; retries and JSON repair consume the attempt cap. Pacing is 3.5 seconds globally inside each run. These commands do not themselves check quota in advance; perform the documented preflight before starting. The readiness CLI limits standalone readiness checks to four rounds; the dedicated pilot launcher passes the 12-round setting to the shared run function.
 
 ## Proposed larger pilot, after the gate
 
-Use three new seeds 7, 8 and 9, four painters, the fixed target and 12 rounds, with the same explicitly assisted scaffold. This is 144 primary model calls and a proposed ceiling of 288 total HTTP attempts including retries and repairs. Apply a single shared request budget across the pilot, stop on transport/model failures, archive failed and incomplete runs, and record all attempts. Check daily quota against the whole ceiling before launching, then schedule across quota windows if necessary. A separate pilot runner must enforce these requirements and the gate; the present commands do not implement this 12-round pilot.
+Use three new seeds 7, 8 and 9, four painters, the fixed target and 12 rounds, with the same explicitly assisted scaffold. This is 144 primary model calls and a proposed ceiling of 288 total HTTP attempts including retries and repairs. Apply a single shared request budget across the pilot, stop on transport/model failures, archive failed and incomplete runs, and record all attempts. Check daily quota against the whole ceiling before launching, then schedule across quota windows if necessary. The dedicated pilot launcher described below enforces the shared cap and gate; the readiness commands above do not start the pilot.
 
 No comparison with no-chat or spontaneous-chat runs is valid as a causal communication estimate unless all other scaffold, model, budget, task, prompt and timing differences are matched. For a later comparison, define matched arms and order, preserve per-seed pairs, predeclare exclusions and outcomes, and retain all outcomes. Decide whether fixed territories and deterministic paint suggestions are experimental aids or potential confounders before interpreting results.
 
 ## Known blockers
 
-The last assisted seed-3, four-round run failed the peer-acknowledgment gate twice despite improved coverage (108 distinct correct cells from 128 paints). The previous unassisted scaffold also failed. Resolve those failures and demonstrate replication before authorizing a larger run. Langfuse live delivery is not independently verified; local run traces are available.
+The earlier assisted seed-3, four-round run failed the peer-acknowledgment gate twice. A subsequent peer-constrained schema passed the three readiness seeds; results still require careful interpretation because the scaffold changes the task. Langfuse live delivery is not independently verified; local run traces are available.
+
+## Launcher update
+
+The three archived assisted readiness runs for seeds 4, 5 and 6 passed the action and communication gate. `python -m swarm_canvas.larger_pilot` rechecks their events, scores and final hashes, and checks the frozen source fingerprint; it makes no inference calls. `python -m swarm_canvas.larger_pilot --launch` additionally checks OpenRouter's current free pricing and remaining quota, then runs seeds 7, 8 and 9 for 12 rounds under one 288-attempt, 3.5-second paced budget. It stops after a failed run and retains a manifest plus run artifacts. API quota can change after preflight; provider errors and failed attempts still count. The launcher reports development results, not causal or confirmatory evidence. Langfuse delivery remains unverified.
