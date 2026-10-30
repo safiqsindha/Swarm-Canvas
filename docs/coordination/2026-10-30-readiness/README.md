@@ -1,0 +1,5 @@
+# Four-round readiness test, seed 3
+
+Source code: PR commit `12c6c6e926e057c5200a19e1f95d7731ada83a66`, reconstructed locally with the same relevant files; the manifest git_commit is a local reconstruction, not that GitHub commit. Native SwarmChat, four agents, fixed territories, required coordination schema, free NVIDIA model, two to four rounds capped at 32 attempts. Gate criteria were defined in source before the run.
+
+Result: failed peer-acknowledgment criteria on four agent-turns. All 16 agent-turns sent a message and applied paints; 38 acknowledgments were accepted, but the gate requires at least one acknowledgment to an exposed peer message when available, and a read receipt can be for one’s own message. 128 paints touched 48 cells (80 redundant), 42 of 384 target cells correct. Sixteen successful model calls, 20 HTTP attempts, four retries, $0 reported cost. One seed is not a reliability estimate; this intervention does not measure spontaneous coordination. Local traces include request and output evidence.

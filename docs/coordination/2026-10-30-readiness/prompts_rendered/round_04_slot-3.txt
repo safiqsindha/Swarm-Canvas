@@ -1,0 +1,70 @@
+Round 4 of 4.
+Painter: a4 (permanent identity slot-3)
+Columns run from A through X (24 across). Rows run from 1 through 16. A blank cell is a single dot.
+   A B C D E F G H I J K L M N O P Q R S T U V W X
+ 1 S S S S S S S S S S S S S . . . . . S . . . . .
+ 2 S S . . . . S S . . . . S . . . . . S . . . . .
+ 3 . . . . . . . . . . . . S . . . . . S . . . . .
+ 4 . . . . . . . . . . . . S . . . . . S . . . . .
+ 5 . . . . . . . . . . . . S . . . . . S . . . . .
+ 6 . . . . . . . . . . . . S . . . . . S . . . . .
+ 7 . . . . . . . . . . . . S . . . . . S . . . . .
+ 8 . . . . . . . . . . . . S . . . . . S . . . . .
+ 9 . . . . . . . . . . . . . . . . . . . . . . . .
+10 . . . . . . . . . . . . . . . . . . . . . . . .
+11 . . . . . . . . . . . . . . . . . . . . . . . .
+12 . . . . . . . . . . . . . . . . . . . . . . . .
+13 . . . . . . . . . . . . . . . . . . . . . . . .
+14 . . . . . . . . . . . . . . . . . . . . . . . .
+15 . . . . . . . . . . . . . . . . . . . . . . . .
+16 . . . . . . . . . . . . . . . . . . . . . . . .
+
+TARGET (visible to every painter):
+SSSSSSSSSSSSSSSSSSSSSSSS
+SSSSSSSSSSSSSSSSSYYYSSSS
+SSwwwSSSSSSSSSSSYYYYYSSS
+SwwwwwSSSSSSSSSSSYYYSSSS
+SSSSSSSSSSSSSSSSSSSSSSSS
+SSSSSSSSSSSSSSSSSSSSSSSS
+SSSSSSSSSSSKPSSSSSSSSSSS
+SSSSSSSSSSSKwwwSSSSSSSSS
+SSSSSSSSSSSKwwwSSSSSSSSS
+SSSSSSSSSSSKwwwSSSSSSSSS
+WWWWWWWWWWWBwWWWWWWWWWWW
+WWWWWWWBBBBBBBBBWWWWWWWW
+WWWWWWWWBBBBBBBWWWWWWWWW
+WWWWWWWWWWWWWWWWWWWWWWWW
+WWWWWWWWWWWWWWWWWWWWWWWW
+WWWWWWWWWWWWWWWWWWWWWWWW
+Reproduce these color codes at the same coordinates. Blank cells count as incorrect.
+
+CHECK 32 painted, 352 blank. Open columns: N O P Q R T U V W X. Blank cells: N 16, O 16, P 16, Q 16, R 16, T 16, U 16, V 16, W 16, X 16, C 15, D 15, E 15, F 15, I 15, J 15, K 15, L 15, A 14, B 14, G 14, H 14, M 8, S 8.
+
+PALETTE: S W Y B w P G K
+CATALOG: O R Gy L
+CATALOG_LEFT: 4
+Scratchpad:
+slot-3 columns S-X. Round 1 plan: paint S column rows 1-16 all S; paint T column rows 1-16 all S; paint U column rows 1-16 all S; paint V column rows 1-16 all S; paint W column rows 1-16 all S; paint X column rows 1-16 all S. This covers all target cells in columns S-X that are S. Remaining target cells in S-X: row2 T-U-Y, row3 U-V-Y, row4 U-V-Y, row7 T-K, row8-10 T-K, row11 S-T-W, row12 S-T-B, row13 S-T-B, row14-16 S-T-W. Will handle in later rounds.
+Notes visible this round:
+#2 slot-3: slot-3 assigned columns S-X. Round 1: paint all S cells in columns S-X (rows 1-16, all six columns). [native read by: slot-0, slot-1, slot-2]
+#3 slot-0: slot-0 assigned cols A-F. Plan: paint rows 1-6 now; rows 7-16 next rounds as colors allow.
+#4 slot-2: slot-2 assigned columns M-R; will paint target cells in those columns
+#5 slot-1: slot-1 assigned columns G-L; will paint S/W/Y/B/w/P/K per target in those columns.
+#10 slot-1: slot-1 assigned columns G-L; will paint S/W/Y/B/w/P/K per target in those columns.
+#11 slot-3: slot-3 assigned columns S-X. Round 2: paint S cells rows 1-16 in columns S-X, then Y cells rows 2-4 in columns T-U-V. [native read by: slot-0, slot-1, slot-2]
+#12 slot-2: slot-2 assigned columns M-R; will paint target cells in those columns.
+#13 slot-0: slot-0 assigned columns A-F. Plan: paint rows 1-6 now; rows 7-16 next rounds as colors allow.
+#18 slot-0: slot-0 assigned columns A-F. Plan: paint rows 1-6 now; rows 7-16 next rounds as colors allow.
+#19 slot-3: slot-3 assigned columns S-X. Round 3: paint S cells rows 1-16 in columns S-X, then Y cells rows 2-4 in columns T-U-V. [native read by: nobody yet]
+#20 slot-2: slot-2 assigned columns M-R; will paint target cells in those columns.
+#21 slot-1: slot-1 assigned columns G-L; will paint S/W/Y/B/w/P/K per target in those columns.
+Reply with one JSON object and nothing else.
+paints is a list of up to 8 objects. Each object has column, row, and color.
+column is one letter from A to X. row is an integer from 1 to 16. Do not join them into one string.
+Each color must be one you already hold, or a catalog color already granted to you.
+requests is a list of catalog color codes.
+messages is a list of short notes. The first 2 are kept, each cut at 200 characters.
+acks is a list of log line numbers you have read. They are free and do not use the note cap.
+scratchpad is a short note you keep for the next round. Use it when a plan should survive the turn.
+A name is at most 20 characters. It is kept on the first round, or later only if a message in this same object announces it by including the name.
+Omit any key you are not using.
