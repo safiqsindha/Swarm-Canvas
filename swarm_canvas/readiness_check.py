@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from contextlib import nullcontext
 from pathlib import Path
 
 from swarm_canvas.agents import LLMAgent
@@ -108,20 +109,23 @@ def assess(events, actions, rounds):
             'applied_acks': sum(e['type'] == 'ack' and bool(e.get('applied')) for e in events)}
 
 
-def run(seed=3, rounds=4, output_root=None, assist=False):
+def run(seed=3, rounds=4, output_root=None, assist=False, shared_budget=None):
     cfg = load_config(ROOT / 'configs/free_smoke_nemotron.yaml')
     cfg.update(seed=seed, rounds=rounds, run_code='readiness_scaffolded', abort_on_model_failure=True)
     cfg['model']['require_coordination_fields'] = True
     if output_root is not None:
         cfg['output_dir'] = str(Path(output_root).resolve())
     agents = [ReadinessAgent(h, _model_config(cfg['model']), '', assist=assist) for h in cfg['agents']['handles']]
-    with model_request_budget(interval_seconds=3.5, max_requests=rounds * 4 * 2) as budget:
+    budget_context = (nullcontext(shared_budget) if shared_budget is not None else
+                      model_request_budget(interval_seconds=3.5, max_requests=rounds * 4 * 2))
+    with budget_context as budget:
+        before = budget.requests
         result = run_config(cfg, render=False, agents=agents,
                             on_round=lambda p: print(json.dumps({'stage': 'round', **p}), flush=True))
     actions = {f'slot-{i}': a.actions for i, a in enumerate(agents)}
     events = [json.loads(line) for line in (result.run_dir / 'events.jsonl').read_text().splitlines()]
     summary = assess(events, actions, rounds)
-    summary.update(run_id=result.run_id, seed=seed, rounds=rounds, request_attempts=budget.requests,
+    summary.update(run_id=result.run_id, seed=seed, rounds=rounds, request_attempts=budget.requests - before,
                    task_scores=result.scores, condition='explicit_fixed_ownership', assist=assist,
                    gate_scope='action and communication adherence, not autonomous coordination or benchmark validity')
     (result.run_dir / 'readiness_actions.json').write_text(json.dumps(actions, indent=2) + '\n')
