@@ -1,0 +1,362 @@
+{
+  "slot-0": [
+    {
+      "paints": [
+        {
+          "column": "A",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "C",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "D",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "E",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "F",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "A",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "paints": [
+        {
+          "column": "A",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "C",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "D",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "E",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "F",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "A",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    }
+  ],
+  "slot-1": [
+    {
+      "paints": [
+        {
+          "column": "G",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "I",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "K",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "G",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "paints": [
+        {
+          "column": "G",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "I",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "K",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "G",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    }
+  ],
+  "slot-2": [
+    {
+      "paints": [
+        {
+          "column": "M",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 6,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 7,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 8,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "paints": [
+        {
+          "column": "M",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 6,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 7,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 8,
+          "color": "S"
+        }
+      ]
+    }
+  ],
+  "slot-3": [
+    {
+      "paints": [
+        {
+          "column": "S",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "U",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "V",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "W",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "S",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "paints": [
+        {
+          "column": "S",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "U",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "V",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "W",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "S",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    }
+  ]
+}
