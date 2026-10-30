@@ -426,6 +426,7 @@ def _run_config(
             "max_tokens": model_cfg.max_tokens,
             "reasoning_max_tokens": model_cfg.reasoning_max_tokens,
             "reasoning_enabled": model_cfg.reasoning_enabled,
+            "require_coordination_fields": model_cfg.require_coordination_fields,
             "paint_budget": budget,
             "policy": "openrouter_free_only",
         },
@@ -516,6 +517,7 @@ def _model_config(model: dict) -> ModelConfig:
         api_key_env=model.get("api_key_env"),
         reasoning_max_tokens=model.get("reasoning_max_tokens"),
         reasoning_enabled=model.get("reasoning_enabled"),
+        require_coordination_fields=model.get("require_coordination_fields", False),
         fake_responses=list(responses) if responses else None,
     )
 
@@ -966,6 +968,7 @@ def _public_model(cfg: ModelConfig) -> dict:
         "reasoning_max_tokens": cfg.reasoning_max_tokens,
         "reasoning_enabled": cfg.reasoning_enabled,
         "paint_budget": cfg.paint_budget,
+        "require_coordination_fields": cfg.require_coordination_fields,
     }
 
 

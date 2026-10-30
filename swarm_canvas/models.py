@@ -38,6 +38,7 @@ class ModelConfig:
     call_records: list[dict] = field(default_factory=list)
     paint_budget: int = 8
     output_kind: str = "painter"
+    require_coordination_fields: bool = False
 
 
 _COLUMNS = [chr(ord("A") + i) for i in range(24)]
@@ -137,6 +138,8 @@ class ModelCallError(RuntimeError):
 
 def validate_model_policy(cfg: ModelConfig) -> None:
     """Development lock: only fake responses or explicitly free OpenRouter models."""
+    if not isinstance(cfg.require_coordination_fields, bool):
+        raise ValueError("require_coordination_fields must be a boolean")
     if cfg.reasoning_enabled is not None and not isinstance(
         cfg.reasoning_enabled, bool
     ):
@@ -253,6 +256,8 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
     if cfg.provider == "openrouter" and cfg.output_kind == "painter":
         schema = copy.deepcopy(_PAINTER_SCHEMA)
         schema["properties"]["paints"]["maxItems"] = cfg.paint_budget
+        if cfg.require_coordination_fields:
+            schema["required"] = ["messages", "acks", "paints"]
         payload["response_format"] = {
             "type": "json_schema",
             "json_schema": {
@@ -264,7 +269,8 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
     try:
         return _post_chat(url, payload, cfg)
     except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 400 and "response_format" in payload:
+        if (exc.response.status_code == 400 and "response_format" in payload
+                and not cfg.require_coordination_fields):
             payload.pop("response_format")
             return _post_chat(url, payload, cfg)
         raise

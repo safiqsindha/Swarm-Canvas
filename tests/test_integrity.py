@@ -322,3 +322,21 @@ def test_disabled_reasoning_rejects_conflicting_token_budget():
     )
     with pytest.raises(ValueError, match="Do not combine"):
         call_model([{"role": "user", "content": "test"}], cfg)
+
+
+def test_coordination_schema_is_opt_in_and_never_falls_back():
+    requests = []
+
+    def reject(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(400, json={"error": "unsupported schema"})
+
+    cfg = ModelConfig(provider="openrouter", name="test/model:free",
+                      require_coordination_fields=True, transport=httpx.MockTransport(reject))
+    from swarm_canvas.models import ModelCallError
+    with pytest.raises(ModelCallError):
+        call_model([{"role": "user", "content": "test"}], cfg)
+    assert len(requests) == 1
+    schema = requests[0]["response_format"]["json_schema"]["schema"]
+    assert schema["required"] == ["messages", "acks", "paints"]
+    assert requests[0]["provider"]["max_price"]["completion"] == 0
