@@ -17,7 +17,10 @@ INSTRUCTION = (
     'one short string stating your assignment and intended work. When peer '
     'messages are visible, include acks as an array of their real line numbers. '
     'Return paints, messages and acks together in the JSON action object. '
-    'Never invent line numbers.'
+    'Never invent line numbers. Acknowledge at least one recent message from another '
+    'agent; never acknowledge your own message. Check the sender shown beside each line. '
+    'Prefer blank or incorrect cells in your territory; avoid repainting a cell already '
+    'matching the target.'
 )
 
 
