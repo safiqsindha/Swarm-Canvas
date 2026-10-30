@@ -1,0 +1,469 @@
+{
+  "status": "completed",
+  "research_evidence": false,
+  "purpose": "paired_development_check",
+  "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+  "canonical_slug": "nvidia/nemotron-3.5-super-vl-20261015",
+  "rounds": 15,
+  "seed": 1,
+  "condition_order": [
+    "c2b_swarmchat",
+    "c1_nochat"
+  ],
+  "conditions": [
+    {
+      "condition": "c2b_swarmchat",
+      "run_code": "paired_c2b_swarmchat",
+      "seed": 1,
+      "rounds": 15,
+      "grid": {
+        "cols": 24,
+        "rows": 16
+      },
+      "agents": {
+        "count": 4,
+        "handles": [
+          "a1",
+          "a2",
+          "a3",
+          "a4"
+        ],
+        "type": "llm"
+      },
+      "paint_budget_per_round": 8,
+      "palette": [
+        "S",
+        "W",
+        "Y",
+        "B",
+        "w",
+        "P",
+        "G",
+        "K"
+      ],
+      "supplier": {
+        "catalog": [
+          "O",
+          "R",
+          "Gy",
+          "L"
+        ],
+        "swarm_budget": 4
+      },
+      "comms": {
+        "kind": "swarmchat",
+        "messages_per_round": 2,
+        "max_chars": 200,
+        "acks_enabled": true,
+        "inbox_context_lines": 20,
+        "server_url": "",
+        "backend": "local"
+      },
+      "model": {
+        "provider": "openrouter",
+        "name": "nvidia/nemotron-3.5-super-vl:free",
+        "temperature": 0.2,
+        "max_tokens": 1600,
+        "reasoning_enabled": false
+      },
+      "prompts": {
+        "system": "prompts/system.txt",
+        "turn": "prompts/turn.txt"
+      },
+      "output_dir": "/workspace/scratch/9b654d1d3f76/Swarm-Canvas/runs/paired_check_dfe1daf5b28f4aad97ee35053766b2b9",
+      "task": {
+        "mode": "reconstruction",
+        "target": "targets/sun_boat.txt"
+      },
+      "abort_on_model_failure": true
+    },
+    {
+      "condition": "c1_nochat",
+      "run_code": "paired_c1_nochat",
+      "seed": 1,
+      "rounds": 15,
+      "grid": {
+        "cols": 24,
+        "rows": 16
+      },
+      "agents": {
+        "count": 4,
+        "handles": [
+          "a1",
+          "a2",
+          "a3",
+          "a4"
+        ],
+        "type": "llm"
+      },
+      "paint_budget_per_round": 8,
+      "palette": [
+        "S",
+        "W",
+        "Y",
+        "B",
+        "w",
+        "P",
+        "G",
+        "K"
+      ],
+      "supplier": {
+        "catalog": [
+          "O",
+          "R",
+          "Gy",
+          "L"
+        ],
+        "swarm_budget": 4
+      },
+      "comms": {
+        "kind": "none",
+        "messages_per_round": 2,
+        "max_chars": 200,
+        "acks_enabled": false,
+        "inbox_context_lines": 20
+      },
+      "model": {
+        "provider": "openrouter",
+        "name": "nvidia/nemotron-3.5-super-vl:free",
+        "temperature": 0.2,
+        "max_tokens": 1600,
+        "reasoning_enabled": false
+      },
+      "prompts": {
+        "system": "prompts/system.txt",
+        "turn": "prompts/turn.txt"
+      },
+      "output_dir": "/workspace/scratch/9b654d1d3f76/Swarm-Canvas/runs/paired_check_dfe1daf5b28f4aad97ee35053766b2b9",
+      "task": {
+        "mode": "reconstruction",
+        "target": "targets/sun_boat.txt"
+      },
+      "abort_on_model_failure": true
+    }
+  ],
+  "source_sha256": {
+    "swarm_canvas/__init__.py": "da3b0d11683cf147fbaf8d8555caff944f0b169a145ffee2a037062984ac486a",
+    "swarm_canvas/agents.py": "7d9627bdab5c6c4c941e863ea26d0ac6b0356b9c876882cc6c99e0b1b14edee8",
+    "swarm_canvas/channel_types.py": "094e03b9b870cd94d581b5b9f695017b5d53393a1f1d74a477520829992ecd36",
+    "swarm_canvas/colors.py": "8b569302d09de9a961731485d8f8b9fb75ac7c4e8a8ca4e85ac4796bc5ddbe42",
+    "swarm_canvas/comms.py": "d2d8a68f4eb8726ab25984d307c3df9d67f19dbf0b9d770151fda51e848d6608",
+    "swarm_canvas/engine.py": "05a4f3d3fee2f55b3e6afd46a9a620d70dff2916d14c718ebf82a041c846b44c",
+    "swarm_canvas/judge.py": "1c36182a5caf2afbebfd2ba56c89f6ed3a5c65284670278ce6f62deb15c8dd8f",
+    "swarm_canvas/models.py": "d550f29d1de516a7e6528ce420001bcc2d93daf43c5726ede54f1b9e279f6a49",
+    "swarm_canvas/paired_check.py": "3e4f1bf775e60755734f18d4a2e9089c88cad06dc94c88a45255299e3f02c7ea",
+    "swarm_canvas/paths.py": "53cae90e0200fce376ace9b49b2011ba997a5b57cdbe5bd658b51f3a188b27d0",
+    "swarm_canvas/pilot.py": "85897a6847b304209896471dee711d7555e29454d372c70b287dc31486baf78e",
+    "swarm_canvas/prompts_render.py": "b6f09959f1a403577f28e2276b23d3b2c9d39a01bff96122669fd1163a5f6077",
+    "swarm_canvas/render.py": "a507ed3ddf6c8002af9769ab75fd3a942e48453fc5b2df4e8a7206b3fc6d39e7",
+    "swarm_canvas/request_budget.py": "7e87c7bfa6ed94b21416f40fc477dd71f23c37b591d62fc5035eb47a50a7df01",
+    "swarm_canvas/runner.py": "52a1565b00980e7984a8bcc488bf63ca412c61b98ac028d733758668657d47ed",
+    "swarm_canvas/score.py": "7e1d6a723de09fe579a711bcd8ea6c414f74e58b25a8f2287c79e665873e7f8b",
+    "swarm_canvas/supplier.py": "dab74e96b0c952f420752c6bfbe44137d6288cb0c795250f1b485c889fda7c6d",
+    "swarm_canvas/swarmchat_check.py": "1c438094553dbbf54961ce8f2f19d90d0d89613d65205d518c4dae5e389860c7",
+    "swarm_canvas/swarmchat_native.py": "ef20eadeebe8d9d74a0c723fefdff4f457b0abfc64bc2d00946e7ccca6e649f3",
+    "swarm_canvas/validate.py": "3bfe9e436e68d525994298219af5b2eebd52d28456e2a8818690800d0bc385d9",
+    "prompts/comms_c0.txt": "4da0fbfcda6b4da329867e32a114c218750cb0c6f309d4eb8445471e6ed8e85f",
+    "prompts/comms_c1.txt": "a2dbec072e827650f139289f67fdeb4c6fa6838db311ebf486daee6e6b62ee62",
+    "prompts/comms_chat.txt": "92bc33464aaf28b70831d046febed051d4416a9638bd275ba1fd823b3978bcdb",
+    "prompts/comms_doc.txt": "4358e7c300274c15e41a052057c773b9d6b92b1eb0488f5ce803ad547db69f5c",
+    "prompts/inbox_block.txt": "a3d33ba5c24c37e72ec6014fdc5155d54da18c7173a05dd2efa8cb9cf3eca890",
+    "prompts/judge_play_stage.txt": "03fced9ce21ba855e7a0470453cf120845bd4ef65520c6f2b0ed0f941075347e",
+    "prompts/objective_free_creation.txt": "e7b89ee7c4c47ba36ec0c401c1f47e95ed77f8c24d3a46b1fab74e684284b336",
+    "prompts/objective_reconstruction.txt": "15dbc291d333293e0cefa50136082cd893ab46d37e334819fbfcc647171c7810",
+    "prompts/repair.txt": "43806f0ad778d869dd0979d8bb34b6fbf82a50424a2bcd7dd92023bf78715d91",
+    "prompts/reply_comms.txt": "0a8cd6388c719d05ab001e05f47d1d2d410f23ae3270546eb874e2ab020904e9",
+    "prompts/reply_none.txt": "fb0d5509a4abf66be07f0a4de8faae8aca16747c5688ac616bcec5f5d3f79921",
+    "prompts/system.txt": "f7735a1865c0c8548b83964bb5c387a8c569e8eca8cb4a533549324b4052098d",
+    "prompts/target_block.txt": "aad9a7f296001451e493ad7a57134f15b353a1975ece8ce31690ed5b39b119ea",
+    "prompts/turn.txt": "aa131e58f28478706822a1097517a98a6efa4bff7cc3155ff9c52ce8cf7a5e73",
+    "targets/sun_boat.txt": "472104eff47306d30dd62a2b8bfdd0229cafafb14dc2756bfd964bdf1addc50b"
+  },
+  "interval_seconds": 3.5,
+  "max_http_requests": 240,
+  "free_request_quota_before": {
+    "used": 34,
+    "limit": 1000,
+    "remaining": 966
+  },
+  "runs": [
+    {
+      "condition": "c2b_swarmchat",
+      "run_dir": "/workspace/scratch/9b654d1d3f76/Swarm-Canvas/runs/paired_check_dfe1daf5b28f4aad97ee35053766b2b9/paired_c2b_swarmchat_s1_7e3609fba5e1474fbdd1888b4ffdcf90",
+      "scores": {
+        "run": "paired_c2b_swarmchat_s1_7e3609fba5e1474fbdd1888b4ffdcf90",
+        "task_mode": "reconstruction",
+        "cells": 384,
+        "painted": 106,
+        "coverage": 0.276,
+        "target_matches": 73,
+        "target_accuracy": 0.1901,
+        "colors_used": [
+          "B",
+          "K",
+          "P",
+          "S",
+          "W",
+          "Y",
+          "w"
+        ],
+        "overwrites": 320,
+        "correct_cells_destroyed": 28,
+        "redundant_paints": 319,
+        "accuracy_by_round": [
+          {
+            "round": 1,
+            "accuracy": 0.020833
+          },
+          {
+            "round": 2,
+            "accuracy": 0.041667
+          },
+          {
+            "round": 3,
+            "accuracy": 0.0625
+          },
+          {
+            "round": 4,
+            "accuracy": 0.083333
+          },
+          {
+            "round": 5,
+            "accuracy": 0.106771
+          },
+          {
+            "round": 6,
+            "accuracy": 0.125
+          },
+          {
+            "round": 7,
+            "accuracy": 0.09375
+          },
+          {
+            "round": 8,
+            "accuracy": 0.114583
+          },
+          {
+            "round": 9,
+            "accuracy": 0.125
+          },
+          {
+            "round": 10,
+            "accuracy": 0.125
+          },
+          {
+            "round": 11,
+            "accuracy": 0.127604
+          },
+          {
+            "round": 12,
+            "accuracy": 0.166667
+          },
+          {
+            "round": 13,
+            "accuracy": 0.169271
+          },
+          {
+            "round": 14,
+            "accuracy": 0.200521
+          },
+          {
+            "round": 15,
+            "accuracy": 0.190104
+          }
+        ],
+        "threshold_90": null,
+        "paints": 480,
+        "invalid": 0,
+        "over_budget": 0,
+        "messages": 0,
+        "acks": 0,
+        "grants": 0,
+        "denies": 0,
+        "passes": 0,
+        "parse_errors": 0,
+        "api_errors": 0,
+        "agent_errors": 0,
+        "token_totals": {
+          "calls": 60,
+          "input_tokens": 85812,
+          "output_tokens": 9164,
+          "retries": 0
+        },
+        "observed_models": [
+          "nvidia/nemotron-3.5-super-vl:free"
+        ],
+        "model_metadata_complete": true,
+        "cost_usd": 0,
+        "per_agent": {
+          "slot-3": {
+            "paints": 120,
+            "messages": 0,
+            "acks": 0,
+            "requests": 0
+          },
+          "slot-1": {
+            "paints": 120,
+            "messages": 0,
+            "acks": 0,
+            "requests": 0
+          },
+          "slot-0": {
+            "paints": 120,
+            "messages": 0,
+            "acks": 0,
+            "requests": 0
+          },
+          "slot-2": {
+            "paints": 120,
+            "messages": 0,
+            "acks": 0,
+            "requests": 0
+          }
+        },
+        "final_hash": "0c79ac77a4e1abbe1eefec99867d9ee6c3c482ed2ee1255c9fcdb9d445d0721e",
+        "reliability_ok": true
+      }
+    },
+    {
+      "condition": "c1_nochat",
+      "run_dir": "/workspace/scratch/9b654d1d3f76/Swarm-Canvas/runs/paired_check_dfe1daf5b28f4aad97ee35053766b2b9/paired_c1_nochat_s1_567517131a814757912fe789f158d200",
+      "scores": {
+        "run": "paired_c1_nochat_s1_567517131a814757912fe789f158d200",
+        "task_mode": "reconstruction",
+        "cells": 384,
+        "painted": 189,
+        "coverage": 0.4922,
+        "target_matches": 130,
+        "target_accuracy": 0.3385,
+        "colors_used": [
+          "B",
+          "K",
+          "P",
+          "S",
+          "W",
+          "Y",
+          "w"
+        ],
+        "overwrites": 273,
+        "correct_cells_destroyed": 25,
+        "redundant_paints": 232,
+        "accuracy_by_round": [
+          {
+            "round": 1,
+            "accuracy": 0.020833
+          },
+          {
+            "round": 2,
+            "accuracy": 0.041667
+          },
+          {
+            "round": 3,
+            "accuracy": 0.0625
+          },
+          {
+            "round": 4,
+            "accuracy": 0.083333
+          },
+          {
+            "round": 5,
+            "accuracy": 0.117188
+          },
+          {
+            "round": 6,
+            "accuracy": 0.138021
+          },
+          {
+            "round": 7,
+            "accuracy": 0.130208
+          },
+          {
+            "round": 8,
+            "accuracy": 0.151042
+          },
+          {
+            "round": 9,
+            "accuracy": 0.192708
+          },
+          {
+            "round": 10,
+            "accuracy": 0.234375
+          },
+          {
+            "round": 11,
+            "accuracy": 0.234375
+          },
+          {
+            "round": 12,
+            "accuracy": 0.263021
+          },
+          {
+            "round": 13,
+            "accuracy": 0.265625
+          },
+          {
+            "round": 14,
+            "accuracy": 0.330729
+          },
+          {
+            "round": 15,
+            "accuracy": 0.338542
+          }
+        ],
+        "threshold_90": null,
+        "paints": 480,
+        "invalid": 0,
+        "over_budget": 0,
+        "messages": 0,
+        "acks": 0,
+        "grants": 0,
+        "denies": 0,
+        "passes": 0,
+        "parse_errors": 0,
+        "api_errors": 0,
+        "agent_errors": 0,
+        "token_totals": {
+          "calls": 60,
+          "input_tokens": 77216,
+          "output_tokens": 9264,
+          "retries": 0
+        },
+        "observed_models": [
+          "nvidia/nemotron-3.5-super-vl:free"
+        ],
+        "model_metadata_complete": true,
+        "cost_usd": 0,
+        "per_agent": {
+          "slot-3": {
+            "paints": 120,
+            "messages": 0,
+            "acks": 0,
+            "requests": 0
+          },
+          "slot-1": {
+            "paints": 120,
+            "messages": 0,
+            "acks": 0,
+            "requests": 0
+          },
+          "slot-0": {
+            "paints": 120,
+            "messages": 0,
+            "acks": 0,
+            "requests": 0
+          },
+          "slot-2": {
+            "paints": 120,
+            "messages": 0,
+            "acks": 0,
+            "requests": 0
+          }
+        },
+        "final_hash": "5d198c744f3f5f7a8faf6bd4f9f922e57a3f465476756e3c55829db51aa66973",
+        "reliability_ok": true
+      }
+    }
+  ],
+  "eligible_for_descriptive_comparison": true,
+  "http_requests_attempted": 120
+}

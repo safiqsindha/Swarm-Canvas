@@ -1,0 +1,14 @@
+{
+  "transport": "native_local",
+  "client_version": "0.1.0",
+  "server_version": "0.1.0",
+  "channel_id": "8931a5e3714ec7f9",
+  "channel_name": "canvas-7e3609fba5e1474fbdd1888b4ffdcf90",
+  "private": true,
+  "users": {
+    "slot-0": "slot-0",
+    "slot-1": "slot-1",
+    "slot-2": "slot-2",
+    "slot-3": "slot-3"
+  }
+}

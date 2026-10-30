@@ -1,0 +1,150 @@
+{
+  "cols": 24,
+  "rows": 16,
+  "cells": [
+    {
+      "cell": "A1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "B1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "C1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "D1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "E1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "F1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "G1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "H1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "I1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "J1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "K1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "L1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "M1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "N1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "O1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "P1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "A2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "B2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "C2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "D2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "E2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "F2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "G2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "H2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    }
+  ]
+}

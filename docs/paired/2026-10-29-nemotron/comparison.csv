@@ -1,0 +1,3 @@
+condition,rounds,model_calls,paint_actions,painted_cells,correct_cells,target_accuracy,redundant_paints,correct_cells_destroyed,messages,acks,api_errors,parse_errors,input_tokens,output_tokens,reported_cost_usd
+c1_nochat,15,60,480,189,130,0.3385,232,25,0,0,0,0,77216,9264,0
+c2b_swarmchat,15,60,480,106,73,0.1901,319,28,0,0,0,0,85812,9164,0

@@ -1,0 +1,134 @@
+{
+  "run": "paired_c1_nochat_s1_567517131a814757912fe789f158d200",
+  "task_mode": "reconstruction",
+  "cells": 384,
+  "painted": 189,
+  "coverage": 0.4922,
+  "target_matches": 130,
+  "target_accuracy": 0.3385,
+  "colors_used": [
+    "B",
+    "K",
+    "P",
+    "S",
+    "W",
+    "Y",
+    "w"
+  ],
+  "overwrites": 273,
+  "correct_cells_destroyed": 25,
+  "redundant_paints": 232,
+  "accuracy_by_round": [
+    {
+      "round": 1,
+      "accuracy": 0.020833
+    },
+    {
+      "round": 2,
+      "accuracy": 0.041667
+    },
+    {
+      "round": 3,
+      "accuracy": 0.0625
+    },
+    {
+      "round": 4,
+      "accuracy": 0.083333
+    },
+    {
+      "round": 5,
+      "accuracy": 0.117188
+    },
+    {
+      "round": 6,
+      "accuracy": 0.138021
+    },
+    {
+      "round": 7,
+      "accuracy": 0.130208
+    },
+    {
+      "round": 8,
+      "accuracy": 0.151042
+    },
+    {
+      "round": 9,
+      "accuracy": 0.192708
+    },
+    {
+      "round": 10,
+      "accuracy": 0.234375
+    },
+    {
+      "round": 11,
+      "accuracy": 0.234375
+    },
+    {
+      "round": 12,
+      "accuracy": 0.263021
+    },
+    {
+      "round": 13,
+      "accuracy": 0.265625
+    },
+    {
+      "round": 14,
+      "accuracy": 0.330729
+    },
+    {
+      "round": 15,
+      "accuracy": 0.338542
+    }
+  ],
+  "threshold_90": null,
+  "paints": 480,
+  "invalid": 0,
+  "over_budget": 0,
+  "messages": 0,
+  "acks": 0,
+  "grants": 0,
+  "denies": 0,
+  "passes": 0,
+  "parse_errors": 0,
+  "api_errors": 0,
+  "agent_errors": 0,
+  "token_totals": {
+    "calls": 60,
+    "input_tokens": 77216,
+    "output_tokens": 9264,
+    "retries": 0
+  },
+  "observed_models": [
+    "nvidia/nemotron-3.5-super-vl:free"
+  ],
+  "model_metadata_complete": true,
+  "cost_usd": 0,
+  "per_agent": {
+    "slot-3": {
+      "paints": 120,
+      "messages": 0,
+      "acks": 0,
+      "requests": 0
+    },
+    "slot-1": {
+      "paints": 120,
+      "messages": 0,
+      "acks": 0,
+      "requests": 0
+    },
+    "slot-0": {
+      "paints": 120,
+      "messages": 0,
+      "acks": 0,
+      "requests": 0
+    },
+    "slot-2": {
+      "paints": 120,
+      "messages": 0,
+      "acks": 0,
+      "requests": 0
+    }
+  },
+  "final_hash": "5d198c744f3f5f7a8faf6bd4f9f922e57a3f465476756e3c55829db51aa66973",
+  "reliability_ok": true
+}
