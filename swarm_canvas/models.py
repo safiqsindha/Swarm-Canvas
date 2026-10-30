@@ -39,6 +39,7 @@ class ModelConfig:
     paint_budget: int = 8
     output_kind: str = "painter"
     require_coordination_fields: bool = False
+    allowed_ack_lines: list[int] | None = None
 
 
 _COLUMNS = [chr(ord("A") + i) for i in range(24)]
@@ -258,6 +259,12 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
         schema["properties"]["paints"]["maxItems"] = cfg.paint_budget
         if cfg.require_coordination_fields:
             schema["required"] = ["messages", "acks", "paints"]
+        if cfg.allowed_ack_lines is not None:
+            if cfg.allowed_ack_lines:
+                schema["properties"]["acks"]["items"]["enum"] = cfg.allowed_ack_lines
+                schema["properties"]["acks"]["minItems"] = 1
+            else:
+                schema["properties"]["acks"]["maxItems"] = 0
         payload["response_format"] = {
             "type": "json_schema",
             "json_schema": {

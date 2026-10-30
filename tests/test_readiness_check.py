@@ -26,6 +26,7 @@ def test_assist_only_uses_visible_territory_and_peer_lines():
     text = (root / 'prompts_rendered/round_03_slot-2.txt').read_text()
     hints = assist_observation(text)
     assert hints['latest_peer_line'] == 13
+    assert 12 not in hints['peer_lines']
     assert hints['candidate_paints']
     assert all(x['column'] in 'MNOPQR' for x in hints['candidate_paints'])
     assert all(x['column'] != 'M' or x['row'] > 8 for x in hints['candidate_paints'])

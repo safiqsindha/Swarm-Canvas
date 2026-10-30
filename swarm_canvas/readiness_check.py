@@ -45,7 +45,7 @@ def assist_observation(observation):
                                    'color': target_rows[row][col]})
     notes = re.findall(r'^#(\d+) (slot-[0-3]):', observation, re.M)
     peer = [int(number) for number, sender in notes if sender != slot]
-    return {'candidate_paints': candidates[:8], 'latest_peer_line': peer[-1] if peer else None}
+    return {'candidate_paints': candidates[:8], 'latest_peer_line': peer[-1] if peer else None, 'peer_lines': peer}
 
 
 class ReadinessAgent(LLMAgent):
@@ -58,6 +58,8 @@ class ReadinessAgent(LLMAgent):
         extra = ''
         if self.assist:
             hints = assist_observation(observation)
+            # Only IDs already visible from peers are offered to the provider schema.
+            self.model_cfg.allowed_ack_lines = hints['peer_lines']
             extra = ('\n\nOptional deterministic hints derived from your visible canvas, '
                      'target and inbox: ' + json.dumps(hints) +
                      '. Candidate paints are cells currently incorrect in your territory; '
