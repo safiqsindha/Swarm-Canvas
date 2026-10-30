@@ -207,7 +207,16 @@ def _post_chat(url: str, payload: dict, cfg: ModelConfig) -> tuple[str, dict]:
 
 
 def _message_text(message: dict) -> str:
-    content = message.get("content")
+    text = _parts(message.get("content"))
+    if text.strip():
+        return text
+    reasoning = message.get("reasoning")
+    if isinstance(reasoning, str) and "{" in reasoning:
+        return reasoning
+    return text
+
+
+def _parts(content) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
