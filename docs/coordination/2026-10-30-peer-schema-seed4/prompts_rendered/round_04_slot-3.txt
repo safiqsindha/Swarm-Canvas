@@ -1,0 +1,70 @@
+Round 4 of 4.
+Painter: a4 (permanent identity slot-3)
+Columns run from A through X (24 across). Rows run from 1 through 16. A blank cell is a single dot.
+   A B C D E F G H I J K L M N O P Q R S T U V W X
+ 1 S S S S S S S S S S S S S S S S S S S S S S S S
+ 2 S S S S S S S S S S S S S S S S S Y Y Y S S S S
+ 3 S S w w w S S S S S S S S S S S Y Y Y Y Y S S S
+ 4 S w w w w w S S S S . . S S S S . . Y Y S S S S
+ 5 . . . . . . . . . . . . . . . . . . . . . . . .
+ 6 . . . . . . . . . . . . . . . . . . . . . . . .
+ 7 . . . . . . . . . . . . . . . . . . . . . . . .
+ 8 . . . . . . . . . . . . . . . . . . . . . . . .
+ 9 . . . . . . . . . . . . . . . . . . . . . . . .
+10 . . . . . . . . . . . . . . . . . . . . . . . .
+11 . . . . . . . . . . . . . . . . . . . . . . . .
+12 . . . . . . . . . . . . . . . . . . . . . . . .
+13 . . . . . . . . . . . . . . . . . . . . . . . .
+14 . . . . . . . . . . . . . . . . . . . . . . . .
+15 . . . . . . . . . . . . . . . . . . . . . . . .
+16 . . . . . . . . . . . . . . . . . . . . . . . .
+
+TARGET (visible to every painter):
+SSSSSSSSSSSSSSSSSSSSSSSS
+SSSSSSSSSSSSSSSSSYYYSSSS
+SSwwwSSSSSSSSSSSYYYYYSSS
+SwwwwwSSSSSSSSSSSYYYSSSS
+SSSSSSSSSSSSSSSSSSSSSSSS
+SSSSSSSSSSSSSSSSSSSSSSSS
+SSSSSSSSSSSKPSSSSSSSSSSS
+SSSSSSSSSSSKwwwSSSSSSSSS
+SSSSSSSSSSSKwwwSSSSSSSSS
+SSSSSSSSSSSKwwwSSSSSSSSS
+WWWWWWWWWWWBwWWWWWWWWWWW
+WWWWWWWBBBBBBBBBWWWWWWWW
+WWWWWWWWBBBBBBBWWWWWWWWW
+WWWWWWWWWWWWWWWWWWWWWWWW
+WWWWWWWWWWWWWWWWWWWWWWWW
+WWWWWWWWWWWWWWWWWWWWWWWW
+Reproduce these color codes at the same coordinates. Blank cells count as incorrect.
+
+CHECK 92 painted, 292 blank. Open columns: none. Blank cells: K 13, L 13, Q 13, R 13, A 12, B 12, C 12, D 12, E 12, F 12, G 12, H 12, I 12, J 12, M 12, N 12, O 12, P 12, S 12, T 12, U 12, V 12, W 12, X 12.
+
+PALETTE: S W Y B w P G K
+CATALOG: O R Gy L
+CATALOG_LEFT: 4
+Scratchpad:
+slot-3 territory columns S-X. Round 1: paint rows 1-2 S/Y per target. Request catalog colors O,R,Gy,L for later rows. Coordinate with peers via #canvas.
+Notes visible this round:
+#2 slot-2: slot-2 assigned columns M-R; painting target colors in rows 1-10
+#3 slot-0: slot-0 assigned columns A-F; painting rows 1-10 S and rows 11-16 W
+#4 slot-3: slot-3 assigned columns S-X. Round 1 plan: paint rows 1-2 S/Y per target; request O,R,Gy,L catalog colors. [native read by: slot-0, slot-1, slot-2]
+#5 slot-1: slot-1 assigned columns G-L; painting rows 1-2 S and rows 3-10 per target
+#10 slot-1: slot-1 assigned columns G-L; painting rows 1-2 S and rows 3-10 per target
+#11 slot-2: slot-2 assigned columns M-R; painting target colors in rows 1-10
+#12 slot-3: slot-3 assigned columns S-X; painting rows 1-2 S/Y per target [native read by: slot-0, slot-1, slot-2]
+#13 slot-0: slot-0 assigned columns A-F; painting rows 1-10 S and rows 11-16 W
+#18 slot-2: slot-2 assigned columns M-R; painting target colors in rows 1-10
+#19 slot-1: slot-1 assigned columns G-L; painting rows 1-2 S and rows 3-10 per target
+#20 slot-3: slot-3 assigned columns S-X; painting rows 1-2 S/Y per target [native read by: nobody yet]
+#21 slot-0: slot-0 assigned columns A-F; painting rows 1-10 S and rows 11-16 W
+Reply with one JSON object and nothing else.
+paints is a list of up to 8 objects. Each object has column, row, and color.
+column is one letter from A to X. row is an integer from 1 to 16. Do not join them into one string.
+Each color must be one you already hold, or a catalog color already granted to you.
+requests is a list of catalog color codes.
+messages is a list of short notes. The first 2 are kept, each cut at 200 characters.
+acks is a list of log line numbers you have read. They are free and do not use the note cap.
+scratchpad is a short note you keep for the next round. Use it when a plan should survive the turn.
+A name is at most 20 characters. It is kept on the first round, or later only if a message in this same object announces it by including the name.
+Omit any key you are not using.

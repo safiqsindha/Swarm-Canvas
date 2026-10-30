@@ -1,0 +1,816 @@
+{
+  "slot-0": [
+    {
+      "messages": [
+        "slot-0 assigned columns A-F; painting rows 1-10 S and rows 11-16 W"
+      ],
+      "acks": [],
+      "paints": [
+        {
+          "column": "A",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "C",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "D",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "E",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "F",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "A",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "scratchpad": "slot-0 assigned columns A-F. Rows 1-10: paint S per target, except row 3 C-D = w. Rows 11-16: paint W per target. Avoid repainting cells already matching target.",
+      "messages": [
+        "slot-0 assigned columns A-F; painting rows 1-10 S and rows 11-16 W"
+      ],
+      "acks": [
+        5
+      ],
+      "paints": [
+        {
+          "column": "C",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "D",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "E",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "F",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "A",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "C",
+          "row": 3,
+          "color": "w"
+        },
+        {
+          "column": "D",
+          "row": 3,
+          "color": "w"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-0 assigned columns A-F; painting rows 1-10 S and rows 11-16 W"
+      ],
+      "acks": [
+        12
+      ],
+      "paints": [
+        {
+          "column": "E",
+          "row": 3,
+          "color": "w"
+        },
+        {
+          "column": "F",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "A",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 4,
+          "color": "w"
+        },
+        {
+          "column": "C",
+          "row": 4,
+          "color": "w"
+        },
+        {
+          "column": "D",
+          "row": 4,
+          "color": "w"
+        },
+        {
+          "column": "E",
+          "row": 4,
+          "color": "w"
+        },
+        {
+          "column": "F",
+          "row": 4,
+          "color": "w"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-0 assigned columns A-F; painting rows 1-10 S and rows 11-16 W"
+      ],
+      "acks": [
+        20
+      ],
+      "paints": [
+        {
+          "column": "A",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "C",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "D",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "E",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "F",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "A",
+          "row": 6,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 6,
+          "color": "S"
+        }
+      ]
+    }
+  ],
+  "slot-1": [
+    {
+      "messages": [
+        "slot-1 assigned columns G-L; painting rows 1-2 S and rows 3-10 per target"
+      ],
+      "acks": [],
+      "paints": [
+        {
+          "column": "G",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "I",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "K",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "G",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-1 assigned columns G-L; painting rows 1-2 S and rows 3-10 per target"
+      ],
+      "acks": [
+        2,
+        3,
+        4
+      ],
+      "paints": [
+        {
+          "column": "G",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "I",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "K",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "G",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 3,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-1 assigned columns G-L; painting rows 1-2 S and rows 3-10 per target"
+      ],
+      "acks": [
+        13
+      ],
+      "paints": [
+        {
+          "column": "I",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "K",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "G",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "I",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 4,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-1 assigned columns G-L; painting rows 1-2 S and rows 3-10 per target"
+      ],
+      "acks": [
+        21
+      ],
+      "paints": [
+        {
+          "column": "K",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "G",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "I",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "K",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 5,
+          "color": "S"
+        }
+      ]
+    }
+  ],
+  "slot-2": [
+    {
+      "messages": [
+        "slot-2 assigned columns M-R; painting target colors in rows 1-10"
+      ],
+      "acks": [],
+      "paints": [
+        {
+          "column": "M",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "N",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "O",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "P",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "Q",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "R",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "M",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "N",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "scratchpad": "slot-2 assigned columns M-R; painting target colors in rows 1-10",
+      "messages": [
+        "slot-2 assigned columns M-R; painting target colors in rows 1-10"
+      ],
+      "acks": [
+        3,
+        4,
+        5
+      ],
+      "paints": [
+        {
+          "column": "M",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "N",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "O",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "P",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "Q",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "R",
+          "row": 2,
+          "color": "Y"
+        },
+        {
+          "column": "M",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "N",
+          "row": 3,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-2 assigned columns M-R; painting target colors in rows 1-10"
+      ],
+      "acks": [
+        13
+      ],
+      "paints": [
+        {
+          "column": "O",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "P",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "Q",
+          "row": 3,
+          "color": "Y"
+        },
+        {
+          "column": "R",
+          "row": 3,
+          "color": "Y"
+        },
+        {
+          "column": "M",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "N",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "O",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "P",
+          "row": 4,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-2 assigned columns M-R; painting target colors in rows 1-10"
+      ],
+      "acks": [
+        21
+      ],
+      "paints": [
+        {
+          "column": "Q",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "R",
+          "row": 4,
+          "color": "Y"
+        },
+        {
+          "column": "M",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "N",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "O",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "P",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "Q",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "R",
+          "row": 5,
+          "color": "S"
+        }
+      ]
+    }
+  ],
+  "slot-3": [
+    {
+      "scratchpad": "slot-3 territory columns S-X. Round 1: paint rows 1-2 S/Y per target. Request catalog colors O,R,Gy,L for later rows. Coordinate with peers via #canvas.",
+      "messages": [
+        "slot-3 assigned columns S-X. Round 1 plan: paint rows 1-2 S/Y per target; request O,R,Gy,L catalog colors."
+      ],
+      "acks": [],
+      "paints": [
+        {
+          "column": "S",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "U",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "V",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "W",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "S",
+          "row": 2,
+          "color": "Y"
+        },
+        {
+          "column": "T",
+          "row": 2,
+          "color": "Y"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-3 assigned columns S-X; painting rows 1-2 S/Y per target"
+      ],
+      "acks": [
+        2,
+        3,
+        5
+      ],
+      "paints": [
+        {
+          "column": "U",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "V",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "W",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "S",
+          "row": 3,
+          "color": "Y"
+        },
+        {
+          "column": "T",
+          "row": 3,
+          "color": "Y"
+        },
+        {
+          "column": "U",
+          "row": 3,
+          "color": "Y"
+        },
+        {
+          "column": "V",
+          "row": 3,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-3 assigned columns S-X; painting rows 1-2 S/Y per target"
+      ],
+      "acks": [
+        2,
+        3,
+        5,
+        10,
+        11,
+        13
+      ],
+      "paints": [
+        {
+          "column": "W",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 3,
+          "color": "S"
+        },
+        {
+          "column": "S",
+          "row": 4,
+          "color": "Y"
+        },
+        {
+          "column": "T",
+          "row": 4,
+          "color": "Y"
+        },
+        {
+          "column": "U",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "V",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "W",
+          "row": 4,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 4,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-3 assigned columns S-X; painting rows 1-2 S/Y per target"
+      ],
+      "acks": [
+        21
+      ],
+      "paints": [
+        {
+          "column": "S",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "U",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "V",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "W",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 5,
+          "color": "S"
+        },
+        {
+          "column": "S",
+          "row": 6,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 6,
+          "color": "S"
+        }
+      ]
+    }
+  ]
+}
