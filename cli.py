@@ -8,6 +8,7 @@ from pathlib import Path
 
 from swarm_canvas.judge import judge_run
 from swarm_canvas.models import ModelConfig
+from swarm_canvas.paired_check import run_paired_check
 from swarm_canvas.pilot import run_pilot
 from swarm_canvas.runner import run_from_yaml
 from swarm_canvas.score import load_run_target, score_run
@@ -54,7 +55,30 @@ def main(argv: list[str] | None = None) -> int:
     check_p.add_argument("--server-url", default="")
     check_p.add_argument("--token-file", default="")
 
+    pair_p = sub.add_parser(
+        "paired-check", help="bounded free-only C1/C2b development comparison"
+    )
+    pair_p.add_argument("--output-dir", default="runs")
+    pair_p.add_argument("--rounds", type=int, default=15)
+    pair_p.add_argument("--seed", type=int, default=1)
+    pair_p.add_argument("--interval-seconds", type=float, default=3.5)
+    pair_p.add_argument("--max-requests", type=int, default=240)
+
     args = parser.parse_args(argv)
+    if args.cmd == "paired-check":
+        print(
+            json.dumps(
+                run_paired_check(
+                    output_root=Path(args.output_dir),
+                    rounds=args.rounds,
+                    seed=args.seed,
+                    interval_seconds=args.interval_seconds,
+                    max_requests=args.max_requests,
+                ),
+                indent=2,
+            )
+        )
+        return 0
     if args.cmd == "swarmchat-check":
         print(
             json.dumps(

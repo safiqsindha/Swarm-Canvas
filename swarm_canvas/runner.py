@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
 from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Callable
 from uuid import uuid4
 
 import yaml
@@ -77,7 +78,11 @@ def run_from_yaml(
 
 
 def run_config(
-    cfg: dict, *, render: bool = True, agents: list | None = None
+    cfg: dict,
+    *,
+    render: bool = True,
+    agents: list | None = None,
+    on_round: Callable[[dict], None] | None = None,
 ) -> RunResult:
     """Allocate an isolated attempt; keep a failed manifest if execution aborts."""
     _validate_config(cfg, agents)
@@ -96,7 +101,12 @@ def run_config(
     try:
         with ExitStack() as resources:
             return _run_config(
-                cfg, run_dir=run_dir, render=render, agents=agents, resources=resources
+                cfg,
+                run_dir=run_dir,
+                render=render,
+                agents=agents,
+                resources=resources,
+                on_round=on_round,
             )
     except Exception as exc:
         saved = json.loads(manifest.read_text())
@@ -185,6 +195,7 @@ def _run_config(
     *,
     run_dir: Path,
     resources: ExitStack,
+    on_round: Callable[[dict], None] | None = None,
     render: bool = True,
     agents: list | None = None,
 ) -> RunResult:
@@ -322,6 +333,12 @@ def _run_config(
             ]
             _resolve_renames(slots, prepared)
             _log_rejections(prepared, slots, run_id, round_num, events)
+            if cfg.get("abort_on_model_failure", False) and any(
+                prep.parse_error or prep.failure_type for prep in prepared
+            ):
+                raise RuntimeError(
+                    "Model failure in round; development attempt aborted before further requests"
+                )
             comm_order = list(slots)
             rng.shuffle(comm_order)
             _communicate(
@@ -341,6 +358,17 @@ def _run_config(
                 snapshot = canvas.snapshot()
                 (canvas_dir / f"round_{round_num:02d}.json").write_text(
                     json.dumps(snapshot, indent=2) + "\n", encoding="utf-8"
+                )
+
+            if on_round is not None:
+                on_round(
+                    {
+                        "run": run_id,
+                        "round": round_num,
+                        "rounds": rounds,
+                        "painted": len(canvas.cells),
+                        "token_totals": _token_totals(slots),
+                    }
                 )
 
     if render and pngs:
@@ -370,6 +398,7 @@ def _run_config(
         "team_paint_budget_per_round": budget * len(slots),
         "agent_type": cfg["agents"].get("type", "random"),
         "uses_live_models": uses_live_models,
+        "abort_on_model_failure": bool(cfg.get("abort_on_model_failure", False)),
         "condition": condition,
         "seed": seed,
         "rounds": rounds,

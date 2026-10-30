@@ -109,6 +109,18 @@ The live command validates all configurations before the first model call and re
 
 Before research runs, assess ceiling/floor effects, choose a fixed task set and repetition count, preregister the primary comparison, and define how reliability failures and provider/model changes affect eligibility. Expanding a pilot after inspecting effects must not be presented as a preregistered confirmatory result.
 
+## Bounded paired development check
+
+```bash
+python cli.py paired-check
+```
+
+This makes live calls only to the pinned free NVIDIA endpoint. It prechecks current zero pricing and free-request quota, then saves the complete 15-round, seed-1 C1/C2b plan before inference. Both conditions use the same target, four painters, temperature 0.2, 1,600-token completion limit, and disabled optional reasoning. A fixed seeded shuffle chooses condition order.
+
+HTTP attempts across all painter threads, repair calls, schema fallbacks and retries share a 3.5-second minimum spacing and a hard 240-request cap. Any API/agent/parse failure aborts the attempt and leaves the pair ineligible for comparison. Run snapshots and a source fingerprint are retained, along with the planned settings and actual request count. The callback prints each completed round's progress.
+
+This is one sequential development pair, not a multi-seed estimate or a confirmatory result. Free-model behavior is not made deterministic by the harness seed. The command does not authorize paid calls or silently substitute another model.
+
 ## Historical demo
 
 <p align="center"><img src="docs/sitting.gif" width="720" alt="Historical random-painter smoke test"></p>

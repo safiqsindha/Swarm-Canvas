@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 
 import httpx
 
+from swarm_canvas.request_budget import before_request
+
 
 @dataclass
 class ModelConfig:
@@ -176,8 +178,12 @@ def _api_key(cfg: ModelConfig) -> str:
 
 def _client(cfg: ModelConfig) -> httpx.Client:
     if cfg.transport is not None:
-        return httpx.Client(transport=cfg.transport, timeout=60.0)
-    return httpx.Client(timeout=60.0)
+        return httpx.Client(
+            transport=cfg.transport,
+            timeout=60.0,
+            event_hooks={"request": [before_request]},
+        )
+    return httpx.Client(timeout=60.0, event_hooks={"request": [before_request]})
 
 
 def _request(messages: list[dict], cfg: ModelConfig) -> tuple[str, dict]:
