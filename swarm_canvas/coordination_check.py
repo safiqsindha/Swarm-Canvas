@@ -61,8 +61,8 @@ def run_coordination_check(output_root: Path | None = None):
     )
     (result.run_dir / "diagnostic_instruction.txt").write_text(INSTRUCTION + "\n")
     events = [
-        json.loads(l)
-        for l in (result.run_dir / "events.jsonl").read_text().splitlines()
+        json.loads(line)
+        for line in (result.run_dir / "events.jsonl").read_text().splitlines()
     ]
     summary = {
         "purpose": "explicit_coordination_diagnostic",
@@ -85,3 +85,42 @@ def run_coordination_check(output_root: Path | None = None):
         json.dumps(summary, indent=2) + "\n"
     )
     return summary
+
+
+def probe_action_schema():
+    """Two fixed message-only probes; no task-performance claim."""
+    from swarm_canvas.agents import parse_model_json
+    from swarm_canvas.models import ModelConfig, call_model
+
+    rows = []
+    with model_request_budget(interval_seconds=3.5, max_requests=4):
+        for kind in ("painter", "judge"):
+            cfg = ModelConfig(
+                provider="openrouter",
+                name="nvidia/nemotron-3.5-super-vl:free",
+                temperature=0,
+                max_tokens=400,
+                reasoning_enabled=False,
+                output_kind=kind,
+            )
+            raw = call_model(
+                [
+                    {
+                        "role": "user",
+                        "content": 'Return exactly this JSON object and no other fields: {"messages":["coordination-check"]}',
+                    }
+                ],
+                cfg,
+            )
+            rows.append(
+                {
+                    "schema_mode": kind,
+                    "raw": raw,
+                    "parsed": parse_model_json(raw),
+                    "calls": cfg.call_records,
+                }
+            )
+    root = ROOT / "runs/schema_probe"
+    root.mkdir(exist_ok=True)
+    (root / "result.json").write_text(json.dumps(rows, indent=2) + "\n")
+    return rows

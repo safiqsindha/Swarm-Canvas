@@ -1,0 +1,54 @@
+{
+  "cols": 24,
+  "rows": 16,
+  "cells": [
+    {
+      "cell": "A1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "B1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "C1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "D1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "E1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "F1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "G1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "H1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    }
+  ]
+}
