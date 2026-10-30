@@ -10,6 +10,7 @@ import subprocess
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack
+from contextvars import copy_context
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable
@@ -27,6 +28,7 @@ from swarm_canvas.render import write_canvas_files
 from swarm_canvas.score import load_plate, score_run
 from swarm_canvas.supplier import Supplier
 from swarm_canvas.validate import Prepared, validate_action
+from swarm_canvas.tracing import observation, trace_run, record_event
 
 
 @dataclass
@@ -100,7 +102,13 @@ def run_config(
     manifest.write_text(json.dumps({"run": run_dir.name, "status": "running"}) + "\n")
     try:
         with ExitStack() as resources:
-            return _run_config(
+            recorder, root = resources.enter_context(trace_run(run_dir, {
+                "condition": cfg["condition"], "seed": int(cfg["seed"]),
+                "rounds": int(cfg["rounds"]), "prompt_hashes": prompt_hashes(),
+                "git_commit": _git_commit(), "task": _task(cfg)[0],
+                "model_policy": "openrouter_free_only",
+            }))
+            result = _run_config(
                 cfg,
                 run_dir=run_dir,
                 render=render,
@@ -108,6 +116,13 @@ def run_config(
                 resources=resources,
                 on_round=on_round,
             )
+            root.update(output={"final_hash": result.final_hash, "scores": result.scores})
+            (run_dir / "tracing.json").write_text(json.dumps({
+                "mode": recorder.mode, "trace_id": recorder.trace_id,
+                "session_id": result.run_id, "audit_file": "traces.jsonl",
+                "delivery_verified": False,
+            }, indent=2) + "\n")
+            return result
     except Exception as exc:
         saved = json.loads(manifest.read_text())
         saved.update(status="failed", error_type=type(exc).__name__)
@@ -298,78 +313,79 @@ def _run_config(
     call_offsets = {slot.index: 0 for slot in slots}
     with events_path.open("w", encoding="utf-8") as events:
         for round_num in range(1, rounds + 1):
-            _deliver(supplier, slots, round_num)
-            observations = _observe(
-                slots,
-                comms,
-                canvas,
-                round_num,
-                rounds,
-                cols,
-                rows,
-                supplier,
-                run_id,
-                events,
-                comms_enabled,
-                prompt_dir,
-                plate,
-                budget,
-            )
-            actions = _act(
-                slots, observations, concurrent=cfg["agents"].get("type") == "llm"
-            )
-            _log_calls(slots, call_offsets, run_id, round_num, events)
-            prepared = [
-                _prepare(
-                    slot,
-                    actions.get(slot.index),
-                    round_num,
-                    budget,
-                    comms_enabled,
-                    comms_cfg,
+            with observation("process-round", metadata={"round": round_num}):
+                _deliver(supplier, slots, round_num)
+                observations = _observe(
                     slots,
+                    comms,
+                    canvas,
+                    round_num,
+                    rounds,
+                    cols,
+                    rows,
+                    supplier,
+                    run_id,
+                    events,
+                    comms_enabled,
+                    prompt_dir,
+                    plate,
+                    budget,
                 )
-                for slot in slots
-            ]
-            _resolve_renames(slots, prepared)
-            _log_rejections(prepared, slots, run_id, round_num, events)
-            if cfg.get("abort_on_model_failure", False) and any(
-                prep.parse_error or prep.failure_type for prep in prepared
-            ):
-                raise RuntimeError(
-                    "Model failure in round; development attempt aborted before further requests"
+                actions = _act(
+                    slots, observations, concurrent=cfg["agents"].get("type") == "llm"
                 )
-            comm_order = list(slots)
-            rng.shuffle(comm_order)
-            _communicate(
-                comm_order, prepared, comms, run_id, round_num, events, comms_enabled
-            )
-            _apply_renames(slots, prepared)
-            _request_colors(comm_order, prepared, supplier, run_id, round_num, events)
-            paint_order = list(slots)
-            rng.shuffle(paint_order)
-            _paint(canvas, paint_order, prepared, run_id, round_num, events)
-            _scratch(slots, prepared, scratch_dir, round_num)
-            if render:
-                pngs.append(
-                    write_canvas_files(canvas, canvas_dir, f"round_{round_num:02d}")
+                _log_calls(slots, call_offsets, run_id, round_num, events)
+                prepared = [
+                    _prepare(
+                        slot,
+                        actions.get(slot.index),
+                        round_num,
+                        budget,
+                        comms_enabled,
+                        comms_cfg,
+                        slots,
+                    )
+                    for slot in slots
+                ]
+                _resolve_renames(slots, prepared)
+                _log_rejections(prepared, slots, run_id, round_num, events)
+                if cfg.get("abort_on_model_failure", False) and any(
+                    prep.parse_error or prep.failure_type for prep in prepared
+                ):
+                    raise RuntimeError(
+                        "Model failure in round; development attempt aborted before further requests"
+                    )
+                comm_order = list(slots)
+                rng.shuffle(comm_order)
+                _communicate(
+                    comm_order, prepared, comms, run_id, round_num, events, comms_enabled
                 )
-            else:
-                snapshot = canvas.snapshot()
-                (canvas_dir / f"round_{round_num:02d}.json").write_text(
-                    json.dumps(snapshot, indent=2) + "\n", encoding="utf-8"
-                )
+                _apply_renames(slots, prepared)
+                _request_colors(comm_order, prepared, supplier, run_id, round_num, events)
+                paint_order = list(slots)
+                rng.shuffle(paint_order)
+                _paint(canvas, paint_order, prepared, run_id, round_num, events)
+                _scratch(slots, prepared, scratch_dir, round_num)
+                if render:
+                    pngs.append(
+                        write_canvas_files(canvas, canvas_dir, f"round_{round_num:02d}")
+                    )
+                else:
+                    snapshot = canvas.snapshot()
+                    (canvas_dir / f"round_{round_num:02d}.json").write_text(
+                        json.dumps(snapshot, indent=2) + "\n", encoding="utf-8"
+                    )
 
-            if on_round is not None:
-                on_round(
-                    {
-                        "run": run_id,
-                        "round": round_num,
-                        "rounds": rounds,
-                        "painted": len(canvas.cells),
-                        "token_totals": _token_totals(slots),
-                    }
-                )
+                if on_round is not None:
+                    on_round(
+                        {
+                            "run": run_id,
+                            "round": round_num,
+                            "rounds": rounds,
+                            "painted": len(canvas.cells),
+                            "token_totals": _token_totals(slots),
+                        }
+                    )
 
     if render and pngs:
         from swarm_canvas.render import to_gif
@@ -659,6 +675,14 @@ def _act(slots: list[Slot], observations: dict, concurrent: bool) -> dict:
     actions: dict[int, dict] = {}
 
     def call(slot: Slot):
+        with observation("act-" + slot.agent_id, "agent", input=observations[slot.index],
+                         metadata={"agent_id": slot.agent_id, "handle": slot.handle}) as turn:
+            action = execute(slot)
+            failed = any(action.get(k) for k in ("_api_error", "_agent_error", "_parse_error"))
+            turn.update(output=action, level="ERROR" if failed else "DEFAULT")
+            return action
+
+    def execute(slot: Slot):
         agent = slot.agent
         if hasattr(agent, "palette"):
             agent.palette = list(slot.palette)
@@ -673,7 +697,7 @@ def _act(slots: list[Slot], observations: dict, concurrent: bool) -> dict:
 
     if concurrent and len(slots) > 1:
         with ThreadPoolExecutor(max_workers=len(slots)) as pool:
-            futures = {slot.index: pool.submit(call, slot) for slot in slots}
+            futures = {slot.index: pool.submit(copy_context().run, call, slot) for slot in slots}
         for index, future in futures.items():
             actions[index] = future.result()
         return actions
@@ -971,5 +995,6 @@ def _git_commit() -> str:
 
 
 def _write(handle, event: dict) -> None:
+    record_event(event)
     handle.write(json.dumps(event, ensure_ascii=False) + "\n")
     handle.flush()

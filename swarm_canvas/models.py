@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 import httpx
 
 from swarm_canvas.request_budget import before_request
+from swarm_canvas.tracing import observation, broadcast_context, register_secret
 
 
 @dataclass
@@ -270,17 +271,41 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
 
 
 def _post_chat(url: str, payload: dict, cfg: ModelConfig) -> tuple[str, dict]:
-    with _client(cfg) as client:
-        response = client.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {_api_key(cfg)}",
-                "content-type": "application/json",
-            },
-            json=payload,
+    register_secret(_api_key(cfg))
+    with observation(
+        "generate-painter-action", "generation", model=cfg.name,
+        input=payload["messages"],
+        model_parameters={k: payload[k] for k in ("temperature", "max_tokens") if k in payload},
+        metadata={"request_payload": {k: v for k, v in payload.items() if k != "messages"}},
+    ) as generation:
+        request_payload = {**payload, **broadcast_context(generation)}
+        with _client(cfg) as client:
+            response = client.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {_api_key(cfg)}",
+                    "content-type": "application/json",
+                },
+                json=request_payload,
+            )
+            try:
+                body = response.json()
+            except ValueError:
+                generation.update(metadata={"http_status": response.status_code, "raw_response": response.text})
+                response.raise_for_status()
+                raise
+            generation.update(metadata={"http_status": response.status_code, "raw_response": body})
+            response.raise_for_status()
+        usage = body.get("usage") or {}
+        choices = body.get("choices") or []
+        generation.update(
+            output=[choice.get("message") for choice in choices],
+            model=body.get("model") or cfg.name,
+            usage_details={k: usage[source] for k, source in (("input", "prompt_tokens"), ("output", "completion_tokens")) if usage.get(source) is not None},
+            cost_details={"total": usage["cost"]} if usage.get("cost") is not None else {},
+            metadata={"response_id": body.get("id"), "provider": body.get("provider"),
+                      "finish_reason": choices[0].get("finish_reason") if choices else None},
         )
-        response.raise_for_status()
-        body = response.json()
     text = _message_text(body["choices"][0]["message"])
     usage = body.get("usage") or {}
     return text, {

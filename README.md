@@ -126,3 +126,20 @@ This is one sequential development pair, not a multi-seed estimate or a confirma
 <p align="center"><img src="docs/sitting.gif" width="720" alt="Historical random-painter smoke test"></p>
 
 This animation is the original seed-1 random-painter demo, not a live model result. The new manifest and identity formats differ from that historical run.
+
+### Tracing and Langfuse
+
+Each run writes `traces.jsonl` and `tracing.json` in its run directory. The audit records the run, round, agent turns, model request attempts (including schema fallback), model responses, parsing, and applied or rejected events. These files can contain prompts, model outputs and SwarmChat messages. Treat run artifacts as sensitive; known credential values and common credential patterns are masked, but masking is not a guarantee of removing all personal or confidential information.
+
+By default (`SWARM_CANVAS_TRACING=auto`), complete Langfuse credentials select direct SDK tracing. Otherwise the app sends trace/session identifiers with OpenRouter requests for an already configured OpenRouter Broadcast destination, and records application spans locally. Broadcast must be enabled for the OpenRouter API key in the account settings. Broadcast mode exports OpenRouter generations; the application and SwarmChat spans are local only, and a successful connection test alone does not prove a run was ingested.
+
+For full application traces in Langfuse, set these variables in the environment running the application (never commit keys):
+
+```bash
+export LANGFUSE_PUBLIC_KEY='<project public key>'
+export LANGFUSE_SECRET_KEY='<project secret key>'
+export LANGFUSE_BASE_URL='<project region or self-hosted URL>'
+export SWARM_CANVAS_TRACING=langfuse
+```
+
+The direct SDK sends redacted inputs and outputs, agent and round spans, request attempts and usage, and flushes before exit. Choose `SWARM_CANVAS_TRACING=broadcast` to use OpenRouter Broadcast with the local audit, or `SWARM_CANVAS_TRACING=local` to keep the audit local. When using direct SDK tracing, exclude the run's OpenRouter key from a Langfuse Broadcast destination to avoid duplicate generation traces. Langfuse's asynchronous export and OpenRouter Broadcast can fail independently; inspect the destination to verify actual delivery. Local redaction does not alter the prompt sent to OpenRouter or the data sent by OpenRouter Broadcast; use the destination's Privacy Mode when appropriate.
