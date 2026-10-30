@@ -5,21 +5,24 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import re
 import subprocess
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from uuid import uuid4
 
 import yaml
 
 from swarm_canvas.agents import LLMAgent, RandomAgent
 from swarm_canvas.comms import DocLog, NoComms, SwarmChatComms
 from swarm_canvas.engine import Canvas
-from swarm_canvas.models import ModelConfig
+from swarm_canvas.models import ModelConfig, validate_model_policy
 from swarm_canvas.paths import ROOT
 from swarm_canvas.prompts_render import prompt_hashes, render_system, render_turn
 from swarm_canvas.render import write_canvas_files
-from swarm_canvas.score import score_run
+from swarm_canvas.score import load_plate, score_run
 from swarm_canvas.supplier import Supplier
 from swarm_canvas.validate import Prepared, validate_action
 
@@ -32,6 +35,10 @@ class Slot:
     palette: list[str]
     scratchpad: str = ""
     model_cfg: ModelConfig | None = None
+
+    @property
+    def agent_id(self) -> str:
+        return f"slot-{self.index}"
 
 
 @dataclass
@@ -68,14 +75,104 @@ def run_from_yaml(
     return run_config(cfg, render=render, agents=agents)
 
 
-def run_config(cfg: dict, *, render: bool = True, agents: list | None = None) -> RunResult:
+def run_config(
+    cfg: dict, *, render: bool = True, agents: list | None = None
+) -> RunResult:
+    """Allocate an isolated attempt; keep a failed manifest if execution aborts."""
+    _validate_config(cfg, agents)
+    run_code = str(cfg.get("run_code") or cfg["condition"])
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", run_code):
+        raise ValueError(
+            "run_code must contain only letters, digits, underscores or hyphens"
+        )
+    output_root = Path(cfg.get("output_dir") or ROOT / "runs")
+    if not output_root.is_absolute():
+        output_root = ROOT / output_root
+    run_dir = output_root / f"{run_code}_s{int(cfg['seed'])}_{uuid4().hex}"
+    run_dir.mkdir(parents=True, exist_ok=False)
+    manifest = run_dir / "config.json"
+    manifest.write_text(json.dumps({"run": run_dir.name, "status": "running"}) + "\n")
+    try:
+        return _run_config(cfg, run_dir=run_dir, render=render, agents=agents)
+    except Exception as exc:
+        saved = json.loads(manifest.read_text())
+        saved.update(status="failed", error_type=type(exc).__name__)
+        manifest.write_text(json.dumps(saved, indent=2) + "\n")
+        raise
+
+
+def _validate_config(cfg: dict, agents: list | None) -> None:
+    if int(cfg["rounds"]) < 1 or int(cfg.get("paint_budget_per_round", 8)) < 1:
+        raise ValueError("rounds and paint budget must be positive")
+    if cfg.get("grid", {"cols": 24, "rows": 16}) != {"cols": 24, "rows": 16}:
+        raise ValueError("This version supports only the 24 by 16 grid")
+    handles = cfg["agents"]["handles"]
+    if not handles or len(set(handles)) != len(handles):
+        raise ValueError("starting handles must be nonempty and unique")
+    if int(cfg["agents"].get("count", len(handles))) != len(handles):
+        raise ValueError("agents.count must match handles")
+    if agents is not None and len(agents) != len(handles):
+        raise ValueError("supplied agents must match handles")
+    if cfg["agents"].get("type", "random") not in {"random", "llm"}:
+        raise ValueError("agents.type must be random or llm")
+    kind = cfg.get("comms", {}).get("kind", "none")
+    if kind not in {"none", "doc_log", "swarmchat"}:
+        raise ValueError("unknown communication kind")
+    live = (
+        cfg["agents"].get("type") == "llm"
+        and agents is None
+        and cfg.get("model", {}).get("provider") != "fake"
+    ) or any(
+        getattr(a, "model_cfg", None) and a.model_cfg.provider != "fake"
+        for a in agents or []
+    )
+    if live:
+        validate_model_policy(_model_config(cfg.get("model") or {}))
+    for agent in agents or []:
+        if getattr(agent, "model_cfg", None):
+            validate_model_policy(agent.model_cfg)
+    if live and kind == "swarmchat" and not cfg.get("comms", {}).get("server_url"):
+        raise ValueError(
+            "Live SwarmChat requires comms.server_url; local fallback is development-only"
+        )
+    _task(cfg)  # validate objective before allocating or calling models
+
+
+def _task(cfg: dict) -> tuple[dict, list[str] | None]:
+    task = dict(cfg.get("task") or {"mode": "free_creation"})
+    mode = task.get("mode", "free_creation")
+    if mode not in {"reconstruction", "free_creation"}:
+        raise ValueError("task.mode must be reconstruction or free_creation")
+    if mode == "free_creation":
+        return task, None
+    path = Path(task.get("target", "targets/sun_boat.txt"))
+    if not path.is_absolute():
+        path = ROOT / path
+    plate = load_plate(path)
+    if len(plate) != 16 or any(len(row) != 24 for row in plate):
+        raise ValueError("target must be 24 columns by 16 rows")
+    available = set(cfg["palette"]) | set(cfg.get("supplier", {}).get("catalog", []))
+    if set("".join(plate)) - available:
+        raise ValueError("target contains colors unavailable to painters")
+    task["mode"] = mode
+    task["sha256"] = hashlib.sha256(
+        json.dumps(plate, separators=(",", ":")).encode()
+    ).hexdigest()
+    return task, plate
+
+
+def _run_config(
+    cfg: dict, *, run_dir: Path, render: bool = True, agents: list | None = None
+) -> RunResult:
     seed = int(cfg["seed"])
     rounds = int(cfg["rounds"])
     cols = int(cfg.get("grid", {}).get("cols", 24))
     rows = int(cfg.get("grid", {}).get("rows", 16))
     condition = str(cfg["condition"])
-    run_code = str(cfg.get("run_code") or condition)
-    run_id = f"{run_code}_s{seed}"
+    run_id = run_dir.name
+    task, plate = _task(cfg)
+    if plate is not None:
+        (run_dir / "target.json").write_text(json.dumps(plate) + "\n", encoding="utf-8")
     budget = int(cfg.get("paint_budget_per_round", 8))
     base_palette = [str(color) for color in cfg["palette"]]
     handles = [str(handle) for handle in cfg["agents"]["handles"]]
@@ -83,13 +180,6 @@ def run_config(cfg: dict, *, render: bool = True, agents: list | None = None) ->
     comms_cfg = cfg.get("comms", {})
     comms_enabled = kind in {"doc_log", "swarmchat"}
     supplier_cfg = cfg.get("supplier", {})
-    output_root = Path(cfg.get("output_dir") or ROOT / "runs")
-    if not output_root.is_absolute():
-        output_root = ROOT / output_root
-    run_dir = output_root / run_id
-    if output_root != ROOT / "runs" and Path(cfg.get("output_dir", "")).is_absolute():
-        run_dir = output_root / run_id
-    run_dir.mkdir(parents=True, exist_ok=True)
     canvas_dir = run_dir / "canvas"
     scratch_dir = run_dir / "scratchpads"
     prompt_dir = run_dir / "prompts_rendered"
@@ -99,6 +189,11 @@ def run_config(cfg: dict, *, render: bool = True, agents: list | None = None) ->
 
     log_path = run_dir / ("doc_log.txt" if comms_enabled else "unused_log.txt")
     comms = _build_comms(kind, comms_cfg, log_path if comms_enabled else None)
+    if kind == "swarmchat":
+        comms.tokens = {
+            f"slot-{i}": comms.tokens.get(f"slot-{i}", comms.tokens.get(h, ""))
+            for i, h in enumerate(handles)
+        }
     if comms_enabled and log_path is not None:
         log_path.write_text(comms.render(), encoding="utf-8")
     supplier = Supplier(
@@ -118,10 +213,54 @@ def run_config(cfg: dict, *, render: bool = True, agents: list | None = None) ->
         kind,
         agents,
     )
+    (run_dir / "config.json").write_text(
+        json.dumps(
+            {
+                "run": run_id,
+                "status": "running",
+                "schema_version": 2,
+                "seed": seed,
+                "condition": condition,
+                "rounds": rounds,
+                "task": task,
+                "model": _public_model(model_cfg),
+                "comms": kind,
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    uses_live_models = any(
+        slot.model_cfg is not None and slot.model_cfg.provider != "fake"
+        for slot in slots
+    )
+    if kind == "swarmchat":
+        comms.required = uses_live_models
     rng = random.Random(seed)
     events_path = run_dir / "events.jsonl"
     pngs: list[Path] = []
-    _write_system_prompts(prompt_dir, slots, base_palette, condition, kind)
+    for slot in slots:
+        if hasattr(slot.agent, "system_prompt"):
+            slot.agent.system_prompt = render_system(
+                slot.handle,
+                " ".join(base_palette),
+                condition,
+                kind,
+                agent_count=len(slots),
+                paint_budget=budget,
+                task_mode=task.get("mode", "free_creation"),
+                agent_id=slot.agent_id,
+            )
+    _write_system_prompts(
+        prompt_dir,
+        slots,
+        base_palette,
+        condition,
+        kind,
+        budget,
+        task.get("mode", "free_creation"),
+    )
+    call_offsets = {slot.index: 0 for slot in slots}
     with events_path.open("w", encoding="utf-8") as events:
         for round_num in range(1, rounds + 1):
             _deliver(supplier, slots, round_num)
@@ -138,16 +277,32 @@ def run_config(cfg: dict, *, render: bool = True, agents: list | None = None) ->
                 events,
                 comms_enabled,
                 prompt_dir,
+                plate,
+                budget,
             )
-            actions = _act(slots, observations, concurrent=cfg["agents"].get("type") == "llm")
+            actions = _act(
+                slots, observations, concurrent=cfg["agents"].get("type") == "llm"
+            )
+            _log_calls(slots, call_offsets, run_id, round_num, events)
             prepared = [
-                _prepare(slot, actions.get(slot.index), round_num, budget, comms_enabled, comms_cfg, slots)
+                _prepare(
+                    slot,
+                    actions.get(slot.index),
+                    round_num,
+                    budget,
+                    comms_enabled,
+                    comms_cfg,
+                    slots,
+                )
                 for slot in slots
             ]
+            _resolve_renames(slots, prepared)
             _log_rejections(prepared, slots, run_id, round_num, events)
             comm_order = list(slots)
             rng.shuffle(comm_order)
-            _communicate(comm_order, prepared, comms, run_id, round_num, events, comms_enabled)
+            _communicate(
+                comm_order, prepared, comms, run_id, round_num, events, comms_enabled
+            )
             _apply_renames(slots, prepared)
             _request_colors(comm_order, prepared, supplier, run_id, round_num, events)
             paint_order = list(slots)
@@ -155,7 +310,9 @@ def run_config(cfg: dict, *, render: bool = True, agents: list | None = None) ->
             _paint(canvas, paint_order, prepared, run_id, round_num, events)
             _scratch(slots, prepared, scratch_dir, round_num)
             if render:
-                pngs.append(write_canvas_files(canvas, canvas_dir, f"round_{round_num:02d}"))
+                pngs.append(
+                    write_canvas_files(canvas, canvas_dir, f"round_{round_num:02d}")
+                )
             else:
                 snapshot = canvas.snapshot()
                 (canvas_dir / f"round_{round_num:02d}.json").write_text(
@@ -171,6 +328,24 @@ def run_config(cfg: dict, *, render: bool = True, agents: list | None = None) ->
     ).hexdigest()
     config_out = {
         "run": run_id,
+        "status": "completed",
+        "schema_version": 2,
+        "final_frame": f"canvas/round_{rounds:02d}.json",
+        "task": task,
+        "agents": [
+            {
+                "agent_id": slot.agent_id,
+                "handle": slot.handle,
+                "effective_model": _public_model(slot.model_cfg)
+                if slot.model_cfg
+                else None,
+            }
+            for slot in slots
+        ],
+        "paint_budget_per_agent": budget,
+        "team_paint_budget_per_round": budget * len(slots),
+        "agent_type": cfg["agents"].get("type", "random"),
+        "uses_live_models": uses_live_models,
         "condition": condition,
         "seed": seed,
         "rounds": rounds,
@@ -180,16 +355,40 @@ def run_config(cfg: dict, *, render: bool = True, agents: list | None = None) ->
             "name": model_cfg.name,
             "temperature": model_cfg.temperature,
             "max_tokens": model_cfg.max_tokens,
+            "reasoning_max_tokens": model_cfg.reasoning_max_tokens,
+            "paint_budget": budget,
+            "policy": "openrouter_free_only",
         },
         "prompt_hashes": prompt_hashes(),
         "git_commit": _git_commit(),
         "token_totals": _token_totals(slots),
         "final_hash": final_hash,
         "comms": kind,
+        "comms_settings": {
+            k: comms_cfg[k]
+            for k in (
+                "messages_per_round",
+                "max_chars",
+                "inbox_context_lines",
+                "acks_enabled",
+            )
+            if k in comms_cfg
+        },
+        "swarmchat_transport": (
+            "required_http_mirror" if comms.required else "development_mirror"
+        )
+        if kind == "swarmchat"
+        else None,
+        "swarmchat_errors": len(getattr(comms, "remote_errors", [])),
+        "supplier": supplier_cfg,
     }
-    (run_dir / "config.json").write_text(json.dumps(config_out, indent=2) + "\n", encoding="utf-8")
+    (run_dir / "config.json").write_text(
+        json.dumps(config_out, indent=2) + "\n", encoding="utf-8"
+    )
     scores = score_run(run_dir)
-    return RunResult(run_dir=run_dir, run_id=run_id, final_hash=final_hash, scores=scores)
+    return RunResult(
+        run_dir=run_dir, run_id=run_id, final_hash=final_hash, scores=scores
+    )
 
 
 def _build_comms(kind: str, comms_cfg: dict, log_path: Path | None):
@@ -220,7 +419,11 @@ def _read_tokens(token_file) -> dict[str, str]:
     if not path.is_file():
         return {}
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    return {str(key): str(value) for key, value in data.items() if not str(key).startswith("#")}
+    return {
+        str(key): str(value)
+        for key, value in data.items()
+        if not str(key).startswith("#")
+    }
 
 
 def _model_config(model: dict) -> ModelConfig:
@@ -249,15 +452,15 @@ def _build_slots(
         elif agent_type == "llm":
             palette_text = " ".join(base_palette)
             system = render_system(handle, palette_text, condition, kind)
-            own_cfg = ModelConfig(
-                provider=model_cfg.provider,
-                name=model_cfg.name,
-                temperature=model_cfg.temperature,
-                max_tokens=model_cfg.max_tokens,
-                base_url=model_cfg.base_url,
-                api_key=model_cfg.api_key,
-                api_key_env=model_cfg.api_key_env,
-                fake_responses=list(model_cfg.fake_responses) if model_cfg.fake_responses else None,
+            own_cfg = replace(
+                model_cfg,
+                paint_budget=budget,
+                fake_responses=list(model_cfg.fake_responses)
+                if model_cfg.fake_responses
+                else None,
+                usage={"calls": 0, "input_tokens": 0, "output_tokens": 0, "retries": 0},
+                calls_log=[],
+                call_records=[],
             )
             agent = LLMAgent(handle, own_cfg, system)
         else:
@@ -283,11 +486,30 @@ def _deliver(supplier: Supplier, slots: list[Slot], round_num: int) -> None:
                 slot.palette.append(color)
 
 
-def _write_system_prompts(prompt_dir: Path, slots, base_palette, condition: str, kind: str) -> None:
+def _write_system_prompts(
+    prompt_dir: Path,
+    slots,
+    base_palette,
+    condition: str,
+    kind: str,
+    budget: int,
+    task_mode: str,
+) -> None:
     palette_text = " ".join(base_palette)
     for slot in slots:
-        text = render_system(slot.handle, palette_text, condition, kind)
-        (prompt_dir / f"system_slot-{slot.index}.txt").write_text(text + "\n", encoding="utf-8")
+        text = render_system(
+            slot.handle,
+            palette_text,
+            condition,
+            kind,
+            agent_count=len(slots),
+            paint_budget=budget,
+            task_mode=task_mode,
+            agent_id=slot.agent_id,
+        )
+        (prompt_dir / f"system_slot-{slot.index}.txt").write_text(
+            text + "\n", encoding="utf-8"
+        )
 
 
 def _observe(
@@ -303,6 +525,8 @@ def _observe(
     events,
     comms_enabled,
     prompt_dir: Path,
+    plate: list[str] | None,
+    paint_budget: int,
 ):
     observations = {}
     canvas_text = canvas.to_text()
@@ -318,6 +542,7 @@ def _observe(
                 "run": run_id,
                 "round": round_num,
                 "agent": slot.handle,
+                "agent_id": slot.agent_id,
                 "type": "exposure",
                 "lines": shown,
                 "native_read": native,
@@ -328,6 +553,7 @@ def _observe(
             round_num=round_num,
             rounds=rounds,
             handle=slot.handle,
+            agent_id=slot.agent_id,
             cols=cols,
             rows=rows,
             canvas=canvas_text,
@@ -337,6 +563,9 @@ def _observe(
             scratchpad=slot.scratchpad,
             inbox_lines=formatted,
             comms_enabled=comms_enabled,
+            target=plate,
+            paint_budget=paint_budget,
+            catalog=" ".join(supplier.catalog),
         )
         (prompt_dir / f"round_{round_num:02d}_slot-{slot.index}.txt").write_text(
             observations[slot.index] + "\n", encoding="utf-8"
@@ -355,7 +584,7 @@ def _act(slots: list[Slot], observations: dict, concurrent: bool) -> dict:
         try:
             action = agent.act(observations[slot.index])
         except Exception as exc:
-            return {"_parse_error": True, "_raw": str(exc)[:500]}
+            return {"_agent_error": True, "_error_type": type(exc).__name__}
         if not isinstance(action, dict):
             return {"_parse_error": True, "_raw": str(action)[:500]}
         return action
@@ -371,7 +600,9 @@ def _act(slots: list[Slot], observations: dict, concurrent: bool) -> dict:
     return actions
 
 
-def _prepare(slot, action, round_num, budget, comms_enabled, comms_cfg, slots) -> Prepared:
+def _prepare(
+    slot, action, round_num, budget, comms_enabled, comms_cfg, slots
+) -> Prepared:
     taken = {other.handle for other in slots if other.index != slot.index}
     max_messages = int(comms_cfg.get("messages_per_round", 2))
     max_chars = int(comms_cfg.get("max_chars", 200))
@@ -390,11 +621,24 @@ def _prepare(slot, action, round_num, budget, comms_enabled, comms_cfg, slots) -
 
 def _log_rejections(prepared, slots, run_id, round_num, events) -> None:
     for slot, prep in zip(slots, prepared):
+        if prep.failure_type:
+            _write(
+                events,
+                {
+                    "run": run_id,
+                    "round": round_num,
+                    "agent": slot.handle,
+                    "agent_id": slot.agent_id,
+                    "type": prep.failure_type,
+                    **prep.failure_details,
+                },
+            )
         if prep.parse_error:
             event = {
                 "run": run_id,
                 "round": round_num,
                 "agent": slot.handle,
+                "agent_id": slot.agent_id,
                 "type": "parse_error",
                 "applied": False,
             }
@@ -402,23 +646,36 @@ def _log_rejections(prepared, slots, run_id, round_num, events) -> None:
                 event["raw"] = prep.raw
             _write(events, event)
         for item in prep.rejections:
-            event = {"run": run_id, "round": round_num, "agent": slot.handle}
+            event = {
+                "run": run_id,
+                "round": round_num,
+                "agent": slot.handle,
+                "agent_id": slot.agent_id,
+            }
             event.update(item)
             _write(events, event)
         if prep.passed:
             _write(
                 events,
-                {"run": run_id, "round": round_num, "agent": slot.handle, "type": "pass"},
+                {
+                    "run": run_id,
+                    "round": round_num,
+                    "agent": slot.handle,
+                    "agent_id": slot.agent_id,
+                    "type": "pass",
+                },
             )
 
 
-def _communicate(order, prepared, comms, run_id, round_num, events, comms_enabled) -> None:
+def _communicate(
+    order, prepared, comms, run_id, round_num, events, comms_enabled
+) -> None:
     if not comms_enabled:
         return
     for slot in order:
         prep = prepared[slot.index]
         for text in prep.messages:
-            number = comms.post(slot.handle, text, round_num)
+            number = comms.post(slot.agent_id, text, round_num)
             if number is None:
                 _write(
                     events,
@@ -426,6 +683,7 @@ def _communicate(order, prepared, comms, run_id, round_num, events, comms_enable
                         "run": run_id,
                         "round": round_num,
                         "agent": slot.handle,
+                        "agent_id": slot.agent_id,
                         "type": "message",
                         "applied": False,
                         "reason": "cap",
@@ -439,14 +697,20 @@ def _communicate(order, prepared, comms, run_id, round_num, events, comms_enable
                         "run": run_id,
                         "round": round_num,
                         "agent": slot.handle,
+                        "agent_id": slot.agent_id,
                         "type": "message",
                         "applied": True,
                         "line": number,
                         "text": text,
                     },
                 )
-        for line_no in prep.acks:
-            number = comms.ack(slot.handle, line_no, round_num)
+        for line_no in dict.fromkeys(prep.acks):
+            seen_lines = getattr(comms, "exposure", {}).get(slot.agent_id, [])
+            number = (
+                comms.ack(slot.agent_id, line_no, round_num)
+                if line_no in seen_lines
+                else 0
+            )
             if not number:
                 _write(
                     events,
@@ -454,6 +718,7 @@ def _communicate(order, prepared, comms, run_id, round_num, events, comms_enable
                         "run": run_id,
                         "round": round_num,
                         "agent": slot.handle,
+                        "agent_id": slot.agent_id,
                         "type": "ack",
                         "applied": False,
                         "reason": "missing_line",
@@ -467,12 +732,54 @@ def _communicate(order, prepared, comms, run_id, round_num, events, comms_enable
                         "run": run_id,
                         "round": round_num,
                         "agent": slot.handle,
+                        "agent_id": slot.agent_id,
                         "type": "ack",
                         "applied": True,
                         "line": line_no,
                         "log_line": number,
                     },
                 )
+
+
+def _resolve_renames(slots, prepared) -> None:
+    proposed = Counter(prep.rename_to for prep in prepared if prep.rename_to)
+    for slot, prep in zip(slots, prepared):
+        if prep.rename_to and proposed[prep.rename_to] > 1:
+            name = prep.rename_to
+            prep.rename_to = None
+            prep.rejections = [
+                e
+                for e in prep.rejections
+                if not (e.get("type") == "rename" and e.get("applied"))
+            ]
+            prep.rejections.append(
+                {
+                    "type": "rename",
+                    "applied": False,
+                    "reason": "simultaneous_name_collision",
+                    "name": name,
+                }
+            )
+
+
+def _log_calls(slots, offsets, run_id, round_num, events) -> None:
+    for slot in slots:
+        cfg = getattr(slot.agent, "model_cfg", None)
+        if cfg is None:
+            continue
+        for record in cfg.call_records[offsets[slot.index] :]:
+            _write(
+                events,
+                {
+                    "type": "model_call",
+                    "run": run_id,
+                    "round": round_num,
+                    "agent": slot.handle,
+                    "agent_id": slot.agent_id,
+                    **record,
+                },
+            )
+        offsets[slot.index] = len(cfg.call_records)
 
 
 def _apply_renames(slots, prepared) -> None:
@@ -492,6 +799,7 @@ def _request_colors(order, prepared, supplier, run_id, round_num, events) -> Non
                     "run": run_id,
                     "round": round_num,
                     "agent": slot.handle,
+                    "agent_id": slot.agent_id,
                     "type": "request",
                     "color": color,
                 },
@@ -500,6 +808,7 @@ def _request_colors(order, prepared, supplier, run_id, round_num, events) -> Non
             decision = dict(decision)
             decision["run"] = run_id
             decision["agent"] = slot.handle
+            decision["agent_id"] = slot.agent_id
             decision["round"] = round_num
             _write(events, decision)
 
@@ -507,8 +816,11 @@ def _request_colors(order, prepared, supplier, run_id, round_num, events) -> Non
 def _paint(canvas, order, prepared, run_id, round_num, events) -> None:
     paints = []
     for slot in order:
-        paints.extend(prepared[slot.index].paints)
-    paint_events = canvas.apply(paints, [slot.handle for slot in order])
+        for paint in prepared[slot.index].paints:
+            paint.agent_id = slot.agent_id
+            paint.agent = slot.handle
+            paints.append(paint)
+    paint_events = canvas.apply(paints, [slot.agent_id for slot in order])
     for event in paint_events:
         event["run"] = run_id
         event["round"] = round_num
@@ -522,13 +834,24 @@ def _scratch(slots, prepared, scratch_dir: Path, round_num: int) -> None:
             slot.scratchpad = prep.scratchpad
             if hasattr(slot.agent, "scratchpad"):
                 slot.agent.scratchpad = prep.scratchpad
-        current[slot.handle] = slot.scratchpad
-        safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in slot.handle) or "painter"
-        (scratch_dir / f"slot-{slot.index}.txt").write_text(slot.scratchpad, encoding="utf-8")
-        (scratch_dir / f"{safe}.txt").write_text(slot.scratchpad, encoding="utf-8")
+        current[slot.agent_id] = {"handle": slot.handle, "scratchpad": slot.scratchpad}
+        (scratch_dir / f"slot-{slot.index}.txt").write_text(
+            slot.scratchpad, encoding="utf-8"
+        )
     (scratch_dir / f"round_{round_num:02d}.json").write_text(
         json.dumps(current, indent=2) + "\n", encoding="utf-8"
     )
+
+
+def _public_model(cfg: ModelConfig) -> dict:
+    return {
+        "provider": cfg.provider,
+        "name": cfg.name,
+        "temperature": cfg.temperature,
+        "max_tokens": cfg.max_tokens,
+        "reasoning_max_tokens": cfg.reasoning_max_tokens,
+        "paint_budget": cfg.paint_budget,
+    }
 
 
 def _token_totals(slots: list[Slot]) -> dict:

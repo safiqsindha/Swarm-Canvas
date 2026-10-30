@@ -1,11 +1,14 @@
 Round {round} of {rounds}.
-Painter: {handle}
+Painter: {handle} (permanent identity {agent_id})
 Columns run from A through X ({cols} across). Rows run from 1 through {rows}. A blank cell is a single dot.
 {canvas}
+
+{target_block}
 
 {check}
 
 PALETTE: {palette}
+CATALOG: {catalog}
 CATALOG_LEFT: {budget}
 Scratchpad:
 {scratchpad}

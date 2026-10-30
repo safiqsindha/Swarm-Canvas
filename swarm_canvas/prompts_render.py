@@ -44,11 +44,31 @@ def comms_rules_file(condition: str, kind: str) -> str:
     return "comms_c1.txt"
 
 
-def render_system(handle: str, palette: str, condition: str, kind: str) -> str:
+def render_system(
+    handle: str,
+    palette: str,
+    condition: str,
+    kind: str,
+    *,
+    agent_count: int = 4,
+    paint_budget: int = 8,
+    task_mode: str = "free_creation",
+    agent_id: str = "painter",
+) -> str:
     rules = read_prompt(comms_rules_file(condition, kind))
     return fill(
         read_prompt("system.txt"),
-        {"handle": handle, "palette": palette, "comms_rules": rules},
+        {
+            "handle": handle,
+            "agent_id": agent_id,
+            "palette": palette,
+            "comms_rules": rules,
+            "team_description": "the only painter on this grid"
+            if agent_count == 1
+            else f"one of {agent_count} painters sharing this grid",
+            "paint_budget": paint_budget,
+            "objective": read_prompt(f"objective_{task_mode}.txt"),
+        },
     )
 
 
@@ -66,6 +86,10 @@ def render_turn(
     scratchpad: str,
     inbox_lines: list[str] | None,
     comms_enabled: bool,
+    target: list[str] | None = None,
+    paint_budget: int = 8,
+    catalog: str = "",
+    agent_id: str = "painter",
 ) -> str:
     if comms_enabled:
         body = "\n".join(inbox_lines or []) or "(none yet)"
@@ -74,15 +98,24 @@ def render_turn(
     else:
         inbox_block = ""
         reply_rules = read_prompt("reply_none.txt")
+    reply_rules = fill(reply_rules, {"paint_budget": paint_budget})
+    target_block = (
+        fill(read_prompt("target_block.txt"), {"target": "\n".join(target)})
+        if target
+        else ""
+    )
     return fill(
         read_prompt("turn.txt"),
         {
             "round": round_num,
             "rounds": rounds,
             "handle": handle,
+            "agent_id": agent_id,
             "cols": cols,
             "rows": rows,
             "canvas": canvas,
+            "target_block": target_block,
+            "catalog": catalog,
             "check": check,
             "palette": palette,
             "budget": budget,

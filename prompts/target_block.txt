@@ -1,0 +1,3 @@
+TARGET (visible to every painter):
+{target}
+Reproduce these color codes at the same coordinates. Blank cells count as incorrect.

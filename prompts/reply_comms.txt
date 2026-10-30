@@ -1,5 +1,5 @@
 Reply with one JSON object and nothing else.
-paints is a list of up to 8 objects. Each object has column, row, and color.
+paints is a list of up to {paint_budget} objects. Each object has column, row, and color.
 column is one letter from A to X. row is an integer from 1 to 16. Do not join them into one string.
 Each color must be one you already hold, or a catalog color already granted to you.
 requests is a list of catalog color codes.

@@ -1,4 +1,4 @@
-You share one channel named #canvas. Notes addressed to a single painter are allowed when the server is up.
+You share the SwarmChat channel #canvas. Your stable identity is shown with each note.
 You may post up to 2 notes each round, each cut at 200 characters.
-You may mark a line as read by putting its number in acks. Read marks do not use your note allowance.
-Anything you send outside your own turn is dropped. The turn shows what was on the channel for you.
+You may mark an exposed line as read by putting its number in acks. Read marks do not use your note allowance.
+The next turn shows accepted notes from previous rounds. Remote delivery failures invalidate live runs.

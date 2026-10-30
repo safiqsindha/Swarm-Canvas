@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 import os
+import time
 from dataclasses import dataclass, field
 
 import httpx
@@ -29,6 +31,9 @@ class ModelConfig:
         }
     )
     calls_log: list[list[dict]] = field(default_factory=list)
+    call_records: list[dict] = field(default_factory=list)
+    paint_budget: int = 8
+    output_kind: str = "painter"
 
 
 _COLUMNS = [chr(ord("A") + i) for i in range(24)]
@@ -68,9 +73,9 @@ def call_model(messages: list[dict], cfg: ModelConfig) -> str:
             return ""
         return cfg.fake_responses.pop(0)
 
-    if cfg.provider not in {"anthropic", "openrouter", "openai_compatible"}:
-        raise ValueError(f"unknown provider {cfg.provider}")
+    validate_model_policy(cfg)
 
+    started = time.monotonic()
     last_error: Exception | None = None
     for attempt in range(3):
         try:
@@ -85,8 +90,55 @@ def call_model(messages: list[dict], cfg: ModelConfig) -> str:
         cfg.usage["input_tokens"] += int(usage.get("input", 0))
         cfg.usage["output_tokens"] += int(usage.get("output", 0))
         cfg.calls_log.append([dict(message) for message in messages])
+        cfg.call_records.append(
+            {
+                "status": "ok",
+                "requested_model": cfg.name,
+                "served_model": usage.get("served_model"),
+                "provider": usage.get("provider"),
+                "response_id": usage.get("response_id"),
+                "input_tokens": int(usage.get("input", 0)),
+                "output_tokens": int(usage.get("output", 0)),
+                "cost_usd": usage.get("cost"),
+                "elapsed_seconds": round(time.monotonic() - started, 4),
+            }
+        )
         return text
-    raise RuntimeError(f"call_model failed after retries: {last_error}")
+    status = (
+        last_error.response.status_code
+        if isinstance(last_error, httpx.HTTPStatusError)
+        else None
+    )
+    cfg.call_records.append(
+        {
+            "status": "api_error",
+            "requested_model": cfg.name,
+            "error_type": type(last_error).__name__,
+            "http_status": status,
+            "elapsed_seconds": round(time.monotonic() - started, 4),
+        }
+    )
+    raise ModelCallError(type(last_error).__name__, status) from last_error
+
+
+class ModelCallError(RuntimeError):
+    def __init__(self, error_type: str, http_status: int | None = None):
+        self.error_type = error_type
+        self.http_status = http_status
+        super().__init__(f"{error_type}; HTTP status {http_status}")
+
+
+def validate_model_policy(cfg: ModelConfig) -> None:
+    """Development lock: only fake responses or explicitly free OpenRouter models."""
+    if cfg.provider == "fake":
+        return
+    if cfg.provider != "openrouter" or not (
+        (cfg.name.endswith(":free") and cfg.name != ":free")
+        or cfg.name == "openrouter/free"
+    ):
+        raise ValueError(
+            "Development model policy permits only OpenRouter :free models or openrouter/free"
+        )
 
 
 def _retryable(exc: Exception) -> bool:
@@ -169,12 +221,19 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
     if cfg.provider == "openrouter" and cfg.reasoning_max_tokens:
         payload["reasoning"] = {"max_tokens": int(cfg.reasoning_max_tokens)}
     if cfg.provider == "openrouter":
+        payload["provider"] = {
+            "allow_fallbacks": False,
+            "max_price": {"prompt": 0, "completion": 0, "request": 0},
+        }
+    if cfg.provider == "openrouter" and cfg.output_kind == "painter":
+        schema = copy.deepcopy(_PAINTER_SCHEMA)
+        schema["properties"]["paints"]["maxItems"] = cfg.paint_budget
         payload["response_format"] = {
             "type": "json_schema",
             "json_schema": {
                 "name": "painter_action",
                 "strict": False,
-                "schema": _PAINTER_SCHEMA,
+                "schema": schema,
             },
         }
     try:
@@ -203,6 +262,10 @@ def _post_chat(url: str, payload: dict, cfg: ModelConfig) -> tuple[str, dict]:
     return text, {
         "input": usage.get("prompt_tokens", 0),
         "output": usage.get("completion_tokens", 0),
+        "served_model": body.get("model"),
+        "provider": body.get("provider"),
+        "response_id": body.get("id"),
+        "cost": usage.get("cost"),
     }
 
 

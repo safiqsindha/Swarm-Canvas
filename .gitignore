@@ -5,3 +5,6 @@ __pycache__/
 runs/*
 !runs/.gitkeep
 *.egg-info/
+
+configs/swarmchat_tokens.yaml
+.env

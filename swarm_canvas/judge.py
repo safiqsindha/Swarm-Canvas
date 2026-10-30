@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from swarm_canvas.models import ModelConfig, call_model
@@ -36,23 +37,38 @@ def judge_run(run_dir: str | Path, model_cfg: ModelConfig | None = None) -> dict
         },
     )
     provider = model_cfg.provider if model_cfg else "heuristic"
-    if model_cfg and provider in {"anthropic", "openrouter", "openai_compatible", "fake"}:
+    if model_cfg and provider in {
+        "anthropic",
+        "openrouter",
+        "openai_compatible",
+        "fake",
+    }:
+        model_cfg = replace(model_cfg, output_kind="judge")
         raw = call_model([{"role": "user", "content": prompt}], model_cfg)
         result = {"mode": provider, "raw": raw, "prompt_sha_inputs": True}
     else:
-        result = {"mode": "heuristic", "stages": _heuristic(events, int(config.get("rounds") or 30))}
+        result = {
+            "mode": "heuristic",
+            "stages": _heuristic(events, int(config.get("rounds") or 30)),
+        }
     result["run"] = config.get("run", run_dir.name)
-    (run_dir / "judge.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    (run_dir / "judge.json").write_text(
+        json.dumps(result, indent=2) + "\n", encoding="utf-8"
+    )
     return result
 
 
 def _heuristic(events: list[dict], rounds: int) -> list[dict]:
-    if rounds <= 0:
+    if rounds <= 0 or not any(
+        e.get("type") == "message" and e.get("applied") for e in events
+    ):
         return []
     cuts = [1, max(1, rounds // 3 + 1), max(1, 2 * rounds // 3 + 1), rounds + 1]
     labels = ["opening", "middle", "closing"]
     stages = []
     for label, start, end in zip(labels, cuts, cuts[1:]):
+        if end <= start:
+            continue
         paints = sum(
             1
             for event in events
