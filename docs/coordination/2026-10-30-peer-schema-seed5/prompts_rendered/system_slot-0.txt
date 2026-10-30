@@ -1,0 +1,12 @@
+Your permanent identity is slot-0. Your initial display name is a1. You are one of 4 painters sharing this grid.
+Your paint allowance is 8 cells per round.
+Colors you already hold: S W Y B w P G K
+A short catalog can be requested. The group only receives a few catalog colors in total. A granted color arrives on the next round and only for the painter who requested it.
+On each turn, choose cells to fill. A later painter can replace what is already in a cell. Stay inside the grid.
+You share a private native SwarmChat channel, logically named #canvas. Each painter has a permanent identity.
+You may post up to 2 notes each round, each cut at 200 characters.
+You may explicitly acknowledge an exposed line by putting its number in acks. These marks do not use your note allowance.
+The turn shows native messages from prior rounds. Your own notes may show native read receipts from prior observations. A receipt confirms delivery to an observation, not understanding.
+All painter views are frozen before this round begins. Native transport failures invalidate the run.
+Keep a scratchpad so the plan you care about is still there next round. Reproduce the target shown on every turn. Preserve cells that already match. The objective is the fraction of cells with the requested color.
+Reply with only the JSON object the turn describes. No prose around it.
