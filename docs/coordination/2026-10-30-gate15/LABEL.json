@@ -1,0 +1,15 @@
+{
+  "research_evidence": false,
+  "condition": "explicit_fixed_ownership",
+  "schema": "messages, acks, and paints required",
+  "assist": false,
+  "not_the_same_as": "docs/paired/2026-10-29-nemotron spontaneous C1 versus C2b",
+  "acks_mean": "harness-accepted read receipts, not evidence a painter understood the note",
+  "seeds": [
+    7,
+    8,
+    9
+  ],
+  "rounds": 15,
+  "model": "nvidia/nemotron-3.5-super-vl:free"
+}
