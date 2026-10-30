@@ -1,0 +1,102 @@
+{
+  "passed": false,
+  "failures": [
+    "slot-2 round 3: no acknowledged peer message",
+    "slot-2 round 4: no acknowledged peer message"
+  ],
+  "model_calls": 16,
+  "messages": 16,
+  "applied_paints": 128,
+  "unique_cells": 32,
+  "applied_acks": 33,
+  "run_id": "readiness_scaffolded_s3_75fb9b0a1f814abbb653d02e96bc81fa",
+  "seed": 3,
+  "rounds": 4,
+  "request_attempts": 16,
+  "task_scores": {
+    "run": "readiness_scaffolded_s3_75fb9b0a1f814abbb653d02e96bc81fa",
+    "task_mode": "reconstruction",
+    "cells": 384,
+    "painted": 32,
+    "coverage": 0.0833,
+    "target_matches": 28,
+    "target_accuracy": 0.0729,
+    "colors_used": [
+      "S"
+    ],
+    "overwrites": 0,
+    "correct_cells_destroyed": 0,
+    "redundant_paints": 96,
+    "accuracy_by_round": [
+      {
+        "round": 1,
+        "accuracy": 0.072917
+      },
+      {
+        "round": 2,
+        "accuracy": 0.072917
+      },
+      {
+        "round": 3,
+        "accuracy": 0.072917
+      },
+      {
+        "round": 4,
+        "accuracy": 0.072917
+      }
+    ],
+    "threshold_90": null,
+    "paints": 128,
+    "invalid": 0,
+    "over_budget": 0,
+    "messages": 16,
+    "acks": 33,
+    "grants": 0,
+    "denies": 0,
+    "passes": 0,
+    "parse_errors": 0,
+    "api_errors": 0,
+    "agent_errors": 0,
+    "token_totals": {
+      "calls": 16,
+      "input_tokens": 29861,
+      "output_tokens": 3475,
+      "retries": 0
+    },
+    "observed_models": [
+      "nvidia/nemotron-3.5-super-vl:free"
+    ],
+    "model_metadata_complete": true,
+    "cost_usd": 0,
+    "per_agent": {
+      "slot-3": {
+        "paints": 32,
+        "messages": 4,
+        "acks": 9,
+        "requests": 0
+      },
+      "slot-0": {
+        "paints": 32,
+        "messages": 4,
+        "acks": 11,
+        "requests": 0
+      },
+      "slot-2": {
+        "paints": 32,
+        "messages": 4,
+        "acks": 6,
+        "requests": 0
+      },
+      "slot-1": {
+        "paints": 32,
+        "messages": 4,
+        "acks": 7,
+        "requests": 0
+      }
+    },
+    "final_hash": "5b1538688e52a6454adbec5c0742d4ff5cdc58f6c9c46fe4842d40dfc5f31365",
+    "reliability_ok": true
+  },
+  "condition": "explicit_fixed_ownership",
+  "gate_scope": "action and communication adherence, not autonomous coordination or benchmark validity"
+}
