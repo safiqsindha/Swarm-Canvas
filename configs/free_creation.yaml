@@ -1,0 +1,51 @@
+condition: free_creation
+run_code: creation
+seed: 1
+rounds: 30
+grid:
+  cols: 24
+  rows: 16
+agents:
+  count: 4
+  handles:
+  - a1
+  - a2
+  - a3
+  - a4
+  type: random
+paint_budget_per_round: 8
+palette:
+- S
+- W
+- Y
+- B
+- w
+- P
+- G
+- K
+supplier:
+  catalog:
+  - O
+  - R
+  - Gy
+  - L
+  swarm_budget: 4
+comms:
+  kind: swarmchat
+  messages_per_round: 2
+  max_chars: 200
+  acks_enabled: true
+  inbox_context_lines: 20
+  server_url: ''
+  backend: local
+model:
+  provider: openrouter
+  name: openrouter/free
+  temperature: 0.7
+  max_tokens: 1600
+prompts:
+  system: prompts/system.txt
+  turn: prompts/turn.txt
+output_dir: runs/
+task:
+  mode: free_creation

@@ -1,0 +1,130 @@
+{
+  "run": "paired_c1_nochat_s1_567517131a814757912fe789f158d200",
+  "status": "completed",
+  "schema_version": 2,
+  "final_frame": "canvas/round_15.json",
+  "task": {
+    "mode": "reconstruction",
+    "target": "targets/sun_boat.txt",
+    "sha256": "5cb9299bbb5b5639e25965d962dfceaa0393a645c5bde3b140c295e59bbd9f91"
+  },
+  "agents": [
+    {
+      "agent_id": "slot-0",
+      "handle": "a1",
+      "effective_model": {
+        "provider": "openrouter",
+        "name": "nvidia/nemotron-3.5-super-vl:free",
+        "temperature": 0.2,
+        "max_tokens": 1600,
+        "reasoning_max_tokens": null,
+        "reasoning_enabled": false,
+        "paint_budget": 8
+      }
+    },
+    {
+      "agent_id": "slot-1",
+      "handle": "a2",
+      "effective_model": {
+        "provider": "openrouter",
+        "name": "nvidia/nemotron-3.5-super-vl:free",
+        "temperature": 0.2,
+        "max_tokens": 1600,
+        "reasoning_max_tokens": null,
+        "reasoning_enabled": false,
+        "paint_budget": 8
+      }
+    },
+    {
+      "agent_id": "slot-2",
+      "handle": "a3",
+      "effective_model": {
+        "provider": "openrouter",
+        "name": "nvidia/nemotron-3.5-super-vl:free",
+        "temperature": 0.2,
+        "max_tokens": 1600,
+        "reasoning_max_tokens": null,
+        "reasoning_enabled": false,
+        "paint_budget": 8
+      }
+    },
+    {
+      "agent_id": "slot-3",
+      "handle": "a4",
+      "effective_model": {
+        "provider": "openrouter",
+        "name": "nvidia/nemotron-3.5-super-vl:free",
+        "temperature": 0.2,
+        "max_tokens": 1600,
+        "reasoning_max_tokens": null,
+        "reasoning_enabled": false,
+        "paint_budget": 8
+      }
+    }
+  ],
+  "paint_budget_per_agent": 8,
+  "team_paint_budget_per_round": 32,
+  "agent_type": "llm",
+  "uses_live_models": true,
+  "abort_on_model_failure": true,
+  "condition": "c1_nochat",
+  "seed": 1,
+  "rounds": 15,
+  "grid": {
+    "cols": 24,
+    "rows": 16
+  },
+  "model": {
+    "provider": "openrouter",
+    "name": "nvidia/nemotron-3.5-super-vl:free",
+    "temperature": 0.2,
+    "max_tokens": 1600,
+    "reasoning_max_tokens": null,
+    "reasoning_enabled": false,
+    "paint_budget": 8,
+    "policy": "openrouter_free_only"
+  },
+  "prompt_hashes": {
+    "prompts/comms_c0.txt": "4da0fbfcda6b4da329867e32a114c218750cb0c6f309d4eb8445471e6ed8e85f",
+    "prompts/comms_c1.txt": "a2dbec072e827650f139289f67fdeb4c6fa6838db311ebf486daee6e6b62ee62",
+    "prompts/comms_chat.txt": "92bc33464aaf28b70831d046febed051d4416a9638bd275ba1fd823b3978bcdb",
+    "prompts/comms_doc.txt": "4358e7c300274c15e41a052057c773b9d6b92b1eb0488f5ce803ad547db69f5c",
+    "prompts/inbox_block.txt": "a3d33ba5c24c37e72ec6014fdc5155d54da18c7173a05dd2efa8cb9cf3eca890",
+    "prompts/judge_play_stage.txt": "03fced9ce21ba855e7a0470453cf120845bd4ef65520c6f2b0ed0f941075347e",
+    "prompts/objective_free_creation.txt": "e7b89ee7c4c47ba36ec0c401c1f47e95ed77f8c24d3a46b1fab74e684284b336",
+    "prompts/objective_reconstruction.txt": "15dbc291d333293e0cefa50136082cd893ab46d37e334819fbfcc647171c7810",
+    "prompts/repair.txt": "43806f0ad778d869dd0979d8bb34b6fbf82a50424a2bcd7dd92023bf78715d91",
+    "prompts/reply_comms.txt": "0a8cd6388c719d05ab001e05f47d1d2d410f23ae3270546eb874e2ab020904e9",
+    "prompts/reply_none.txt": "fb0d5509a4abf66be07f0a4de8faae8aca16747c5688ac616bcec5f5d3f79921",
+    "prompts/system.txt": "f7735a1865c0c8548b83964bb5c387a8c569e8eca8cb4a533549324b4052098d",
+    "prompts/target_block.txt": "aad9a7f296001451e493ad7a57134f15b353a1975ece8ce31690ed5b39b119ea",
+    "prompts/turn.txt": "aa131e58f28478706822a1097517a98a6efa4bff7cc3155ff9c52ce8cf7a5e73"
+  },
+  "git_commit": "a19848043962015dcb82dd8fa53cab68da4e6182",
+  "token_totals": {
+    "calls": 60,
+    "input_tokens": 77216,
+    "output_tokens": 9264,
+    "retries": 0
+  },
+  "final_hash": "5d198c744f3f5f7a8faf6bd4f9f922e57a3f465476756e3c55829db51aa66973",
+  "comms": "none",
+  "comms_settings": {
+    "messages_per_round": 2,
+    "max_chars": 200,
+    "inbox_context_lines": 20,
+    "acks_enabled": false
+  },
+  "swarmchat_transport": null,
+  "swarmchat": null,
+  "swarmchat_errors": 0,
+  "supplier": {
+    "catalog": [
+      "O",
+      "R",
+      "Gy",
+      "L"
+    ],
+    "swarm_budget": 4
+  }
+}

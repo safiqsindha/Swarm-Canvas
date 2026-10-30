@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import copy
 import os
+import time
 from dataclasses import dataclass, field
 
 import httpx
+
+from swarm_canvas.request_budget import before_request
+from swarm_canvas.tracing import observation, broadcast_context, register_secret
 
 
 @dataclass
@@ -18,6 +23,7 @@ class ModelConfig:
     api_key: str | None = None
     api_key_env: str | None = None
     reasoning_max_tokens: int | None = None
+    reasoning_enabled: bool | None = None
     fake_responses: list[str] | None = None
     transport: httpx.BaseTransport | None = None
     usage: dict = field(
@@ -29,6 +35,10 @@ class ModelConfig:
         }
     )
     calls_log: list[list[dict]] = field(default_factory=list)
+    call_records: list[dict] = field(default_factory=list)
+    paint_budget: int = 8
+    output_kind: str = "painter"
+    require_coordination_fields: bool = False
 
 
 _COLUMNS = [chr(ord("A") + i) for i in range(24)]
@@ -68,9 +78,9 @@ def call_model(messages: list[dict], cfg: ModelConfig) -> str:
             return ""
         return cfg.fake_responses.pop(0)
 
-    if cfg.provider not in {"anthropic", "openrouter", "openai_compatible"}:
-        raise ValueError(f"unknown provider {cfg.provider}")
+    validate_model_policy(cfg)
 
+    started = time.monotonic()
     last_error: Exception | None = None
     for attempt in range(3):
         try:
@@ -85,8 +95,68 @@ def call_model(messages: list[dict], cfg: ModelConfig) -> str:
         cfg.usage["input_tokens"] += int(usage.get("input", 0))
         cfg.usage["output_tokens"] += int(usage.get("output", 0))
         cfg.calls_log.append([dict(message) for message in messages])
+        cfg.call_records.append(
+            {
+                "status": "ok",
+                "requested_model": cfg.name,
+                "served_model": usage.get("served_model"),
+                "provider": usage.get("provider"),
+                "response_id": usage.get("response_id"),
+                "input_tokens": int(usage.get("input", 0)),
+                "output_tokens": int(usage.get("output", 0)),
+                "cost_usd": usage.get("cost"),
+                "finish_reason": usage.get("finish_reason"),
+                "reasoning_tokens": usage.get("reasoning_tokens"),
+                "has_visible_content": usage.get("has_visible_content"),
+                "elapsed_seconds": round(time.monotonic() - started, 4),
+            }
+        )
         return text
-    raise RuntimeError(f"call_model failed after retries: {last_error}")
+    status = (
+        last_error.response.status_code
+        if isinstance(last_error, httpx.HTTPStatusError)
+        else None
+    )
+    cfg.call_records.append(
+        {
+            "status": "api_error",
+            "requested_model": cfg.name,
+            "error_type": type(last_error).__name__,
+            "http_status": status,
+            "elapsed_seconds": round(time.monotonic() - started, 4),
+        }
+    )
+    raise ModelCallError(type(last_error).__name__, status) from last_error
+
+
+class ModelCallError(RuntimeError):
+    def __init__(self, error_type: str, http_status: int | None = None):
+        self.error_type = error_type
+        self.http_status = http_status
+        super().__init__(f"{error_type}; HTTP status {http_status}")
+
+
+def validate_model_policy(cfg: ModelConfig) -> None:
+    """Development lock: only fake responses or explicitly free OpenRouter models."""
+    if not isinstance(cfg.require_coordination_fields, bool):
+        raise ValueError("require_coordination_fields must be a boolean")
+    if cfg.reasoning_enabled is not None and not isinstance(
+        cfg.reasoning_enabled, bool
+    ):
+        raise ValueError("reasoning_enabled must be a boolean or unset")
+    if cfg.reasoning_enabled is False and cfg.reasoning_max_tokens is not None:
+        raise ValueError(
+            "Do not combine disabled reasoning with a reasoning token budget"
+        )
+    if cfg.provider == "fake":
+        return
+    if cfg.provider != "openrouter" or not (
+        (cfg.name.endswith(":free") and cfg.name != ":free")
+        or cfg.name == "openrouter/free"
+    ):
+        raise ValueError(
+            "Development model policy permits only OpenRouter :free models or openrouter/free"
+        )
 
 
 def _retryable(exc: Exception) -> bool:
@@ -112,8 +182,12 @@ def _api_key(cfg: ModelConfig) -> str:
 
 def _client(cfg: ModelConfig) -> httpx.Client:
     if cfg.transport is not None:
-        return httpx.Client(transport=cfg.transport, timeout=60.0)
-    return httpx.Client(timeout=60.0)
+        return httpx.Client(
+            transport=cfg.transport,
+            timeout=60.0,
+            event_hooks={"request": [before_request]},
+        )
+    return httpx.Client(timeout=60.0, event_hooks={"request": [before_request]})
 
 
 def _request(messages: list[dict], cfg: ModelConfig) -> tuple[str, dict]:
@@ -166,43 +240,94 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
         "max_tokens": cfg.max_tokens,
         "messages": messages,
     }
-    if cfg.provider == "openrouter" and cfg.reasoning_max_tokens:
-        payload["reasoning"] = {"max_tokens": int(cfg.reasoning_max_tokens)}
     if cfg.provider == "openrouter":
+        reasoning = {}
+        if cfg.reasoning_enabled is not None:
+            reasoning["enabled"] = cfg.reasoning_enabled
+        if cfg.reasoning_max_tokens is not None:
+            reasoning["max_tokens"] = int(cfg.reasoning_max_tokens)
+        if reasoning:
+            payload["reasoning"] = reasoning
+    if cfg.provider == "openrouter":
+        payload["provider"] = {
+            "allow_fallbacks": False,
+            "max_price": {"prompt": 0, "completion": 0, "request": 0},
+        }
+    if cfg.provider == "openrouter" and cfg.output_kind == "painter":
+        schema = copy.deepcopy(_PAINTER_SCHEMA)
+        schema["properties"]["paints"]["maxItems"] = cfg.paint_budget
+        if cfg.require_coordination_fields:
+            schema["required"] = ["messages", "acks", "paints"]
         payload["response_format"] = {
             "type": "json_schema",
             "json_schema": {
                 "name": "painter_action",
                 "strict": False,
-                "schema": _PAINTER_SCHEMA,
+                "schema": schema,
             },
         }
     try:
         return _post_chat(url, payload, cfg)
     except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 400 and "response_format" in payload:
+        if (exc.response.status_code == 400 and "response_format" in payload
+                and not cfg.require_coordination_fields):
             payload.pop("response_format")
             return _post_chat(url, payload, cfg)
         raise
 
 
 def _post_chat(url: str, payload: dict, cfg: ModelConfig) -> tuple[str, dict]:
-    with _client(cfg) as client:
-        response = client.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {_api_key(cfg)}",
-                "content-type": "application/json",
-            },
-            json=payload,
+    register_secret(_api_key(cfg))
+    with observation(
+        "generate-painter-action", "generation", model=cfg.name,
+        input=payload["messages"],
+        model_parameters={k: payload[k] for k in ("temperature", "max_tokens") if k in payload},
+        metadata={"request_payload": {k: v for k, v in payload.items() if k != "messages"}},
+    ) as generation:
+        request_payload = {**payload, **broadcast_context(generation)}
+        with _client(cfg) as client:
+            response = client.post(
+                url,
+                headers={
+                    "Authorization": f"Bearer {_api_key(cfg)}",
+                    "content-type": "application/json",
+                },
+                json=request_payload,
+            )
+            try:
+                body = response.json()
+            except ValueError:
+                generation.update(metadata={"http_status": response.status_code, "raw_response": response.text})
+                response.raise_for_status()
+                raise
+            generation.update(metadata={"http_status": response.status_code, "raw_response": body})
+            response.raise_for_status()
+        usage = body.get("usage") or {}
+        choices = body.get("choices") or []
+        generation.update(
+            output=[choice.get("message") for choice in choices],
+            model=body.get("model") or cfg.name,
+            usage_details={k: usage[source] for k, source in (("input", "prompt_tokens"), ("output", "completion_tokens")) if usage.get(source) is not None},
+            cost_details={"total": usage["cost"]} if usage.get("cost") is not None else {},
+            metadata={"response_id": body.get("id"), "provider": body.get("provider"),
+                      "finish_reason": choices[0].get("finish_reason") if choices else None},
         )
-        response.raise_for_status()
-        body = response.json()
     text = _message_text(body["choices"][0]["message"])
     usage = body.get("usage") or {}
     return text, {
         "input": usage.get("prompt_tokens", 0),
         "output": usage.get("completion_tokens", 0),
+        "served_model": body.get("model"),
+        "provider": body.get("provider"),
+        "response_id": body.get("id"),
+        "cost": usage.get("cost"),
+        "finish_reason": body["choices"][0].get("finish_reason"),
+        "reasoning_tokens": (usage.get("completion_tokens_details") or {}).get(
+            "reasoning_tokens"
+        ),
+        "has_visible_content": bool(
+            _parts(body["choices"][0]["message"].get("content")).strip()
+        ),
     }
 
 

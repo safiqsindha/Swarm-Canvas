@@ -1,0 +1,1 @@
+Reproduce the target shown on every turn. Preserve cells that already match. The objective is the fraction of cells with the requested color.

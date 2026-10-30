@@ -1,0 +1,43 @@
+{
+  "purpose": "paired_development_check",
+  "research_evidence": false,
+  "conditions": [
+    {
+      "condition": "c1_nochat",
+      "rounds": 15,
+      "model_calls": 60,
+      "paint_actions": 480,
+      "painted_cells": 189,
+      "correct_cells": 130,
+      "target_accuracy": 0.3385,
+      "redundant_paints": 232,
+      "correct_cells_destroyed": 25,
+      "messages": 0,
+      "acks": 0,
+      "api_errors": 0,
+      "parse_errors": 0,
+      "input_tokens": 77216,
+      "output_tokens": 9264,
+      "reported_cost_usd": 0
+    },
+    {
+      "condition": "c2b_swarmchat",
+      "rounds": 15,
+      "model_calls": 60,
+      "paint_actions": 480,
+      "painted_cells": 106,
+      "correct_cells": 73,
+      "target_accuracy": 0.1901,
+      "redundant_paints": 319,
+      "correct_cells_destroyed": 28,
+      "messages": 0,
+      "acks": 0,
+      "api_errors": 0,
+      "parse_errors": 0,
+      "input_tokens": 85812,
+      "output_tokens": 9164,
+      "reported_cost_usd": 0
+    }
+  ],
+  "http_requests_attempted": 120
+}

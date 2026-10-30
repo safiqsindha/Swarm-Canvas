@@ -1,5 +1,6 @@
-# Placeholder tokens, one per starting handle. Not real credentials.
-a1: replace-me
-a2: replace-me
-a3: replace-me
-a4: replace-me
+# Remote servers only. Replace each placeholder with a distinct user token.
+# Local runs provision isolated agents automatically; do not use this file.
+slot-0: replace-me
+slot-1: replace-me
+slot-2: replace-me
+slot-3: replace-me

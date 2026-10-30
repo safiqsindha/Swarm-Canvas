@@ -1,0 +1,92 @@
+{
+  "purpose": "explicit_coordination_diagnostic",
+  "research_evidence": false,
+  "run_dir": "/workspace/scratch/9b654d1d3f76/Swarm-Canvas/runs/explicit_coordination_s1_d9371e4e17d644e2927428a8b4516361",
+  "http_requests": 16,
+  "scores": {
+    "run": "explicit_coordination_s1_d9371e4e17d644e2927428a8b4516361",
+    "task_mode": "reconstruction",
+    "cells": 384,
+    "painted": 8,
+    "coverage": 0.0208,
+    "target_matches": 8,
+    "target_accuracy": 0.0208,
+    "colors_used": [
+      "S"
+    ],
+    "overwrites": 112,
+    "correct_cells_destroyed": 0,
+    "redundant_paints": 120,
+    "accuracy_by_round": [
+      {
+        "round": 1,
+        "accuracy": 0.020833
+      },
+      {
+        "round": 2,
+        "accuracy": 0.020833
+      },
+      {
+        "round": 3,
+        "accuracy": 0.020833
+      },
+      {
+        "round": 4,
+        "accuracy": 0.020833
+      }
+    ],
+    "threshold_90": null,
+    "paints": 128,
+    "invalid": 0,
+    "over_budget": 0,
+    "messages": 0,
+    "acks": 0,
+    "grants": 0,
+    "denies": 0,
+    "passes": 0,
+    "parse_errors": 0,
+    "api_errors": 0,
+    "agent_errors": 0,
+    "token_totals": {
+      "calls": 16,
+      "input_tokens": 25504,
+      "output_tokens": 2416,
+      "retries": 0
+    },
+    "observed_models": [
+      "nvidia/nemotron-3.5-super-vl:free"
+    ],
+    "model_metadata_complete": true,
+    "cost_usd": 0,
+    "per_agent": {
+      "slot-3": {
+        "paints": 32,
+        "messages": 0,
+        "acks": 0,
+        "requests": 0
+      },
+      "slot-1": {
+        "paints": 32,
+        "messages": 0,
+        "acks": 0,
+        "requests": 0
+      },
+      "slot-0": {
+        "paints": 32,
+        "messages": 0,
+        "acks": 0,
+        "requests": 0
+      },
+      "slot-2": {
+        "paints": 32,
+        "messages": 0,
+        "acks": 0,
+        "requests": 0
+      }
+    },
+    "final_hash": "da37e39e9a103b3aa7b5e7928f05de6ab935f4389ab581a4105b25bd5d023255",
+    "reliability_ok": true
+  },
+  "message_senders": [],
+  "applied_acknowledgments": 0
+}

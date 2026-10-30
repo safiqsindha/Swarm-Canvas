@@ -1,0 +1,198 @@
+{
+  "cols": 24,
+  "rows": 16,
+  "cells": [
+    {
+      "cell": "A1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "B1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "C1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "D1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "E1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "F1",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "G1",
+      "color": "S",
+      "handle": "a2",
+      "agent_id": "slot-1"
+    },
+    {
+      "cell": "H1",
+      "color": "S",
+      "handle": "a2",
+      "agent_id": "slot-1"
+    },
+    {
+      "cell": "I1",
+      "color": "S",
+      "handle": "a2",
+      "agent_id": "slot-1"
+    },
+    {
+      "cell": "J1",
+      "color": "S",
+      "handle": "a2",
+      "agent_id": "slot-1"
+    },
+    {
+      "cell": "K1",
+      "color": "S",
+      "handle": "a2",
+      "agent_id": "slot-1"
+    },
+    {
+      "cell": "L1",
+      "color": "S",
+      "handle": "a2",
+      "agent_id": "slot-1"
+    },
+    {
+      "cell": "M1",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "S1",
+      "color": "S",
+      "handle": "a4",
+      "agent_id": "slot-3"
+    },
+    {
+      "cell": "T1",
+      "color": "S",
+      "handle": "a4",
+      "agent_id": "slot-3"
+    },
+    {
+      "cell": "U1",
+      "color": "S",
+      "handle": "a4",
+      "agent_id": "slot-3"
+    },
+    {
+      "cell": "V1",
+      "color": "S",
+      "handle": "a4",
+      "agent_id": "slot-3"
+    },
+    {
+      "cell": "W1",
+      "color": "S",
+      "handle": "a4",
+      "agent_id": "slot-3"
+    },
+    {
+      "cell": "X1",
+      "color": "S",
+      "handle": "a4",
+      "agent_id": "slot-3"
+    },
+    {
+      "cell": "A2",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "B2",
+      "color": "S",
+      "handle": "a1",
+      "agent_id": "slot-0"
+    },
+    {
+      "cell": "G2",
+      "color": "S",
+      "handle": "a2",
+      "agent_id": "slot-1"
+    },
+    {
+      "cell": "H2",
+      "color": "S",
+      "handle": "a2",
+      "agent_id": "slot-1"
+    },
+    {
+      "cell": "M2",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "S2",
+      "color": "S",
+      "handle": "a4",
+      "agent_id": "slot-3"
+    },
+    {
+      "cell": "T2",
+      "color": "S",
+      "handle": "a4",
+      "agent_id": "slot-3"
+    },
+    {
+      "cell": "M3",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "M4",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "M5",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "M6",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "M7",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    },
+    {
+      "cell": "M8",
+      "color": "S",
+      "handle": "a3",
+      "agent_id": "slot-2"
+    }
+  ]
+}

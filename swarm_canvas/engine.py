@@ -14,12 +14,14 @@ class Paint:
     agent: str
     cell: str
     color: str
+    agent_id: str | None = None
 
 
 @dataclass
 class CellState:
     color: str | None = None
     handle: str | None = None
+    agent_id: str | None = None
 
 
 def parse_cell(cell: str, cols: int = 24, rows: int = 16) -> tuple[int, int] | None:
@@ -53,7 +55,7 @@ class Canvas:
         """
         grouped: dict[str, list[Paint]] = {}
         for paint in paints:
-            grouped.setdefault(paint.agent, []).append(paint)
+            grouped.setdefault(paint.agent_id or paint.agent, []).append(paint)
 
         events: list[dict] = []
         seen: set[str] = set()
@@ -67,19 +69,25 @@ class Canvas:
                     continue
                 prev = self.cells.get(pos)
                 overwrote = None
-                if prev and prev.handle and prev.handle != agent:
+                if prev and prev.handle and (prev.agent_id or prev.handle) != agent:
                     overwrote = prev.handle
-                self.cells[pos] = CellState(color=paint.color, handle=agent)
+                self.cells[pos] = CellState(
+                    color=paint.color, handle=paint.agent, agent_id=paint.agent_id
+                )
                 event = {
                     "type": "paint",
-                    "agent": agent,
+                    "agent": paint.agent,
                     "cell": paint.cell,
                     "color": paint.color,
                     "applied": True,
                     "order": index,
                 }
+                if paint.agent_id:
+                    event["agent_id"] = paint.agent_id
                 if overwrote:
                     event["overwrote"] = overwrote
+                    if prev.agent_id:
+                        event["overwrote_agent_id"] = prev.agent_id
                 events.append(event)
         return events
 
@@ -95,6 +103,7 @@ class Canvas:
                         "cell": cell_name(col, row),
                         "color": state.color,
                         "handle": state.handle,
+                        **({"agent_id": state.agent_id} if state.agent_id else {}),
                     }
                 )
         return {"cols": self.cols, "rows": self.rows, "cells": cells}

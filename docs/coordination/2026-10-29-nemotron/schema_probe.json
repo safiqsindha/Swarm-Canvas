@@ -1,0 +1,52 @@
+[
+  {
+    "schema_mode": "painter",
+    "raw": "{\"messages\": [\"coordination-check\"]}",
+    "parsed": {
+      "messages": [
+        "coordination-check"
+      ]
+    },
+    "calls": [
+      {
+        "status": "ok",
+        "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+        "served_model": "nvidia/nemotron-3.5-super-vl:free",
+        "provider": "Nvidia",
+        "response_id": "gen-1793327200-c9Xt3QHfFXcTOmFjNGsq",
+        "input_tokens": 35,
+        "output_tokens": 10,
+        "cost_usd": 0,
+        "finish_reason": "stop",
+        "reasoning_tokens": 0,
+        "has_visible_content": true,
+        "elapsed_seconds": 3.6666
+      }
+    ]
+  },
+  {
+    "schema_mode": "judge",
+    "raw": "{\"messages\":[\"coordination-check\"]}",
+    "parsed": {
+      "messages": [
+        "coordination-check"
+      ]
+    },
+    "calls": [
+      {
+        "status": "ok",
+        "requested_model": "nvidia/nemotron-3.5-super-vl:free",
+        "served_model": "nvidia/nemotron-3.5-super-vl:free",
+        "provider": "Nvidia",
+        "response_id": "gen-1793327203-o2EJ4I3LB19kKCUAiy5t",
+        "input_tokens": 35,
+        "output_tokens": 10,
+        "cost_usd": 0,
+        "finish_reason": "stop",
+        "reasoning_tokens": 0,
+        "has_visible_content": true,
+        "elapsed_seconds": 2.9526
+      }
+    ]
+  }
+]

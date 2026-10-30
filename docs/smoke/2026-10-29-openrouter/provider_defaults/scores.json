@@ -1,0 +1,53 @@
+{
+  "run": "free_smoke_nemotron35_s1_8bbca25058d740a5b7eaec0b83812db7",
+  "task_mode": "reconstruction",
+  "cells": 384,
+  "painted": 0,
+  "coverage": 0.0,
+  "target_matches": 0,
+  "target_accuracy": 0.0,
+  "colors_used": [],
+  "overwrites": 0,
+  "correct_cells_destroyed": 0,
+  "redundant_paints": 0,
+  "accuracy_by_round": [
+    {
+      "round": 1,
+      "accuracy": 0.0
+    },
+    {
+      "round": 2,
+      "accuracy": 0.0
+    },
+    {
+      "round": 3,
+      "accuracy": 0.0
+    }
+  ],
+  "threshold_90": null,
+  "paints": 0,
+  "invalid": 0,
+  "over_budget": 0,
+  "messages": 0,
+  "acks": 0,
+  "grants": 0,
+  "denies": 0,
+  "passes": 0,
+  "parse_errors": 12,
+  "api_errors": 0,
+  "agent_errors": 0,
+  "token_totals": {
+    "calls": 24,
+    "input_tokens": 35556,
+    "output_tokens": 38400,
+    "retries": 0
+  },
+  "observed_models": [
+    "nvidia/nemotron-3.5-super-vl:free"
+  ],
+  "model_metadata_complete": true,
+  "cost_usd": 0,
+  "per_agent": {},
+  "final_hash": "a76da1b150c987a0d71ac664af117f8f1a607781694da8aafef1201b3a8b4503",
+  "reliability_ok": false
+}

@@ -22,6 +22,8 @@ class Prepared:
     passed: bool = False
     parse_error: bool = False
     raw: str = ""
+    failure_type: str | None = None
+    failure_details: dict = field(default_factory=dict)
 
 
 def _as_int(value) -> int | None:
@@ -60,13 +62,27 @@ def validate_action(
     taken_handles: set[str] | None = None,
 ) -> Prepared:
     prepared = Prepared()
+    if isinstance(action, dict) and (
+        action.get("_api_error") or action.get("_agent_error")
+    ):
+        prepared.failure_type = (
+            "api_error" if action.get("_api_error") else "agent_error"
+        )
+        prepared.failure_details = {
+            "error_type": action.get("_error_type"),
+            "http_status": action.get("_http_status"),
+        }
+        return prepared
     if not isinstance(action, dict) or action.get("_parse_error"):
-        prepared.parse_error = bool(isinstance(action, dict) and action.get("_parse_error"))
+        prepared.parse_error = bool(
+            isinstance(action, dict) and action.get("_parse_error")
+        )
         if isinstance(action, dict):
             prepared.raw = str(action.get("_raw") or "")[:180]
-        prepared.passed = True
         if not isinstance(action, dict):
-            prepared.rejections.append({"type": "invalid", "reason": "action_not_object"})
+            prepared.rejections.append(
+                {"type": "invalid", "reason": "action_not_object"}
+            )
         return prepared
 
     held = set(palette)
@@ -82,9 +98,14 @@ def validate_action(
         raw_messages = []
     else:
         for item in raw_messages:
-            text = str(item).replace("\n", " ").strip()
+            if not isinstance(item, str):
+                prepared.rejections.append({"type": "invalid", "reason": "message_not_string"})
+                continue
+            text = item.replace("\n", " ").strip()
             if not text:
-                prepared.rejections.append({"type": "invalid", "reason": "empty_message"})
+                prepared.rejections.append(
+                    {"type": "invalid", "reason": "empty_message"}
+                )
                 continue
             text = text[:max_chars]
             if len(prepared.messages) >= max_messages:
@@ -113,7 +134,11 @@ def validate_action(
             line_no = _as_int(item)
             if line_no is None:
                 prepared.rejections.append(
-                    {"type": "invalid", "reason": "ack_not_int", "value": str(item)[:40]}
+                    {
+                        "type": "invalid",
+                        "reason": "ack_not_int",
+                        "value": str(item)[:40],
+                    }
                 )
                 continue
             prepared.acks.append(line_no)
@@ -121,7 +146,9 @@ def validate_action(
     rename = action.get("name")
     if rename is not None:
         if not isinstance(rename, str):
-            prepared.rejections.append({"type": "rename", "applied": False, "reason": "name_type"})
+            prepared.rejections.append(
+                {"type": "rename", "applied": False, "reason": "name_type"}
+            )
         else:
             cleaned = rename.strip()
             if not cleaned or len(cleaned) > 20 or not _NAME_RE.match(cleaned):
@@ -129,13 +156,20 @@ def validate_action(
                     {
                         "type": "rename",
                         "applied": False,
-                        "reason": "name_length" if len(cleaned) > 20 or not cleaned else "name_chars",
+                        "reason": "name_length"
+                        if len(cleaned) > 20 or not cleaned
+                        else "name_chars",
                         "name": cleaned[:40],
                     }
                 )
             elif taken_handles and cleaned in taken_handles and cleaned != handle:
                 prepared.rejections.append(
-                    {"type": "rename", "applied": False, "reason": "name_taken", "name": cleaned}
+                    {
+                        "type": "rename",
+                        "applied": False,
+                        "reason": "name_taken",
+                        "name": cleaned,
+                    }
                 )
             elif round_num == 1 or any(cleaned in text for text in prepared.messages):
                 prepared.rename_to = cleaned
@@ -160,7 +194,9 @@ def validate_action(
     valid_count = 0
     for item in raw_paints:
         if not isinstance(item, dict):
-            prepared.rejections.append({"type": "invalid", "reason": "paint_not_object"})
+            prepared.rejections.append(
+                {"type": "invalid", "reason": "paint_not_object"}
+            )
             continue
         cell_s = _paint_cell(item)
         color = item.get("color")

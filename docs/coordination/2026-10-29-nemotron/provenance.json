@@ -1,0 +1,7 @@
+{
+  "diagnostic_source_commit": "04b20531aed13f8fd2d8f94f68015bae0e9ad49e",
+  "research_evidence": false,
+  "note": "Each actual model turn appended diagnostic_instruction.txt to the saved base observation. Credential-bearing native server databases are excluded. Prior spontaneous-chat and paired results are unchanged.",
+  "archived_module_sha256": "46ebe14e492e58cd3fc5d42796a938287f8d4beae11ba7215eaf4715e88ff5b4",
+  "archive_note": "The archived module includes a subsequent local-variable rename in the diagnostic log reader; the probe function and its request settings are unchanged."
+}

@@ -8,8 +8,9 @@ import re
 from typing import Protocol
 
 from swarm_canvas.engine import COL_LETTERS
-from swarm_canvas.models import ModelConfig, call_model
+from swarm_canvas.models import ModelCallError, ModelConfig, call_model
 from swarm_canvas.prompts_render import read_prompt
+from swarm_canvas.tracing import observation
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 
@@ -61,13 +62,27 @@ class LLMAgent:
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": observation},
         ]
+        try:
+            return self._act(messages)
+        except ModelCallError as exc:
+            return {
+                "_api_error": True,
+                "_error_type": exc.error_type,
+                "_http_status": exc.http_status,
+            }
+
+    def _act(self, messages: list[dict]) -> dict:
         raw = self._ask(messages)
-        parsed = parse_model_json(raw)
+        with observation("parse-painter-action", input=raw) as parse:
+            parsed = parse_model_json(raw)
+            parse.update(output=parsed, level="WARNING" if parsed is None else "DEFAULT")
         if parsed is None:
             messages.append({"role": "assistant", "content": raw})
             messages.append({"role": "user", "content": read_prompt("repair.txt")})
             raw = self._ask(messages)
-            parsed = parse_model_json(raw)
+            with observation("parse-painter-action", input=raw, metadata={"repair": True}) as parse:
+                parsed = parse_model_json(raw)
+                parse.update(output=parsed, level="ERROR" if parsed is None else "DEFAULT")
         if parsed is None:
             return {"_parse_error": True, "_raw": raw[:500]}
         scratch = parsed.get("scratchpad")
@@ -76,10 +91,7 @@ class LLMAgent:
         return parsed
 
     def _ask(self, messages: list[dict]) -> str:
-        try:
-            return call_model(messages, self.model_cfg)
-        except Exception as exc:
-            return f"{type(exc).__name__}: {exc}"
+        return call_model(messages, self.model_cfg)
 
 
 def parse_model_json(raw: str) -> dict | None:

@@ -1,6 +1,4 @@
 import json
-import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from openpyxl import load_workbook
@@ -47,7 +45,12 @@ def _cfg(kind="none", condition="c1_nochat", agent_type="random", **extra):
             "acks_enabled": kind != "none",
             "inbox_context_lines": 20,
         },
-        "model": {"provider": "fake", "name": "fake", "temperature": 0, "max_tokens": 100},
+        "model": {
+            "provider": "fake",
+            "name": "fake",
+            "temperature": 0,
+            "max_tokens": 100,
+        },
         "output_dir": extra.pop("output_dir"),
     }
     base.update(extra)
@@ -148,8 +151,14 @@ def test_catalog_color_usable_next_round_only_by_requester(tmp_path):
         if event["agent"] == "a1" and event["color"] == "O" and event["round"] == 1
     ]
     assert len(grants) == 1
-    paints = [event for event in events if event["type"] == "paint" and event.get("applied")]
-    assert paints[0]["agent"] == "a1" and paints[0]["color"] == "O" and paints[0]["round"] == 2
+    paints = [
+        event for event in events if event["type"] == "paint" and event.get("applied")
+    ]
+    assert (
+        paints[0]["agent"] == "a1"
+        and paints[0]["color"] == "O"
+        and paints[0]["round"] == 2
+    )
     round2_invalid = [
         event
         for event in events
@@ -174,39 +183,39 @@ def test_exposure_event_matches_observation(tmp_path):
     round2 = [
         event
         for event in events
-        if event["type"] == "exposure" and event["round"] == 2 and event["agent"] == "a2"
+        if event["type"] == "exposure"
+        and event["round"] == 2
+        and event["agent"] == "a2"
     ]
     assert round2[0]["lines"] == [1]
-    observation = (result.run_dir / "prompts_rendered" / "round_02_slot-1.txt").read_text(
-        encoding="utf-8"
-    )
-    assert "#1 a1: I will hold the left columns." in observation
-    shown = [int(token[1:]) for token in observation.split() if token.startswith("#") and token[1:].isdigit()]
+    observation = (
+        result.run_dir / "prompts_rendered" / "round_02_slot-1.txt"
+    ).read_text(encoding="utf-8")
+    assert "#1 slot-0: I will hold the left columns." in observation
+    shown = [
+        int(token[1:])
+        for token in observation.split()
+        if token.startswith("#") and token[1:].isdigit()
+    ]
     assert shown == round2[0]["lines"]
 
 
-def test_c1_prompts_omit_comms_and_nobody_sees_the_plate(tmp_path):
+def test_reconstruction_exposes_target_but_creation_does_not(tmp_path):
     result = run_from_yaml(
-        ROOT / "configs" / "c1_nochat.yaml",
-        seed=1,
-        rounds=1,
-        output_root=tmp_path,
-        render=False,
+        ROOT / "configs/c1_nochat.yaml", rounds=1, output_root=tmp_path, render=False
     )
-    plate = (TARGETS / "sun_boat.txt").read_text(encoding="utf-8")
-    rendered = list((result.run_dir / "prompts_rendered").glob("*.txt"))
-    assert rendered
-    blob = "\n".join(path.read_text(encoding="utf-8") for path in rendered).lower()
-    assert "message" not in blob
-    assert "ack" not in blob
-    for word in BANNED:
-        assert word not in blob
-    assert plate.strip() not in blob
-
-    for path in PROMPTS.glob("*.txt"):
-        text = path.read_text(encoding="utf-8").lower()
-        for word in BANNED:
-            assert word not in text, path.name
+    target = (TARGETS / "sun_boat.txt").read_text().strip()
+    observation = (result.run_dir / "prompts_rendered/round_01_slot-0.txt").read_text()
+    assert target in observation
+    assert "Notes visible" not in observation
+    assert "messages is a list" not in observation
+    cfg = _cfg(output_dir=str(tmp_path / "creation"), rounds=1)
+    creation = run_config(cfg, render=False)
+    observation = (
+        creation.run_dir / "prompts_rendered/round_01_slot-0.txt"
+    ).read_text()
+    assert target not in observation
+    assert creation.scores["target_accuracy"] is None
 
 
 def test_same_seed_same_canvas(tmp_path):
@@ -225,9 +234,14 @@ def test_same_seed_same_canvas(tmp_path):
         render=False,
     )
     assert first.final_hash == second.final_hash
-    assert (tmp_path / "a").joinpath(first.run_id, "events.jsonl").read_bytes() == (
-        tmp_path / "b"
-    ).joinpath(second.run_id, "events.jsonl").read_bytes()
+    first_events = [
+        {k: v for k, v in e.items() if k != "run"} for e in _events(first.run_dir)
+    ]
+    second_events = [
+        {k: v for k, v in e.items() if k != "run"} for e in _events(second.run_dir)
+    ]
+    assert first.run_id != second.run_id
+    assert first_events == second_events
 
 
 def test_full_dry_run_writes_outputs(tmp_path):
@@ -276,12 +290,20 @@ def test_unparseable_model_output_repairs_once_then_passes(tmp_path):
 
     recovered = ModelConfig(
         provider="fake",
-        fake_responses=["not json", '{"scratchpad":"hold left","paints":[{"cell":"A1","color":"S"}]}'],
+        fake_responses=[
+            "not json",
+            '{"scratchpad":"hold left","paints":[{"cell":"A1","color":"S"}]}',
+        ],
     )
     parsed = LLMAgent("a1", recovered, "system").act("observation")
     assert parsed["paints"][0]["cell"] == "A1"
 
-    agents = [LLMAgent(f"a{i}", ModelConfig(provider="fake", fake_responses=["??", "??"]), "sys") for i in range(1, 5)]
+    agents = [
+        LLMAgent(
+            f"a{i}", ModelConfig(provider="fake", fake_responses=["??", "??"]), "sys"
+        )
+        for i in range(1, 5)
+    ]
     run = run_config(
         _cfg(agent_type="llm", output_dir=str(tmp_path), rounds=1),
         render=False,
@@ -289,100 +311,51 @@ def test_unparseable_model_output_repairs_once_then_passes(tmp_path):
     )
     events = _events(run.run_dir)
     assert sum(event["type"] == "parse_error" for event in events) == 4
-    assert sum(event["type"] == "pass" for event in events) == 4
+    assert sum(event["type"] == "pass" for event in events) == 0
+    assert run.scores["reliability_ok"] is False
 
 
-class _SwarmChatHandler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        length = int(self.headers.get("Content-Length") or 0)
-        body = json.loads(self.rfile.read(length).decode())
-        self.server.received.append(
-            {
-                "path": self.path,
-                "auth": self.headers.get("Authorization"),
-                "body": body,
-            }
-        )
-        self.send_response(self.server.status_code)
-        self.send_header("Content-Length", "0")
-        self.end_headers()
-
-    def log_message(self, fmt, *args):
-        return
-
-
-def _swarmchat_server(status_code=200):
-    server = ThreadingHTTPServer(("127.0.0.1", 0), _SwarmChatHandler)
-    server.received = []
-    server.status_code = status_code
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    return server
-
-
-def _swarmchat_cfg(tmp_path, server):
-    tokens = tmp_path / "tokens.yaml"
-    tokens.write_text("a1: tok-a1\na2: tok-a2\na3: tok-a3\na4: tok-a4\n", encoding="utf-8")
-    cfg = _cfg(kind="swarmchat", condition="c2b_swarmchat", output_dir=str(tmp_path), rounds=2)
-    cfg["comms"]["server_url"] = f"http://127.0.0.1:{server.server_address[1]}"
-    cfg["comms"]["token_file"] = str(tokens)
-    return cfg
-
-
-def test_swarmchat_mirror_posts_only_accepted_notes(tmp_path):
-    server = _swarmchat_server()
-    try:
-        agents = [
-            Scripted(
-                [
-                    {"messages": ["one", "two", "three"], "paints": [{"cell": "A1", "color": "S"}]},
-                    {},
-                ]
-            ),
-            Scripted([{"messages": ["right"], "acks": [99]}, {"acks": [1]}]),
-            Scripted([{}, {}]),
-            Scripted([{}, {}]),
-        ]
-        result = run_config(_swarmchat_cfg(tmp_path, server), render=False, agents=agents)
-    finally:
-        server.shutdown()
-        server.server_close()
-
-    events = _events(result.run_dir)
-    applied = [event["text"] for event in events if event["type"] == "message" and event.get("applied")]
-    posted = [item["body"]["text"] for item in server.received if item["body"]["kind"] == "message"]
-    assert applied == posted
-    assert set(posted) == {"one", "two", "right"}
-    assert "three" not in posted
-    assert all(item["path"] == "/channels/canvas/messages" for item in server.received)
-    for item in server.received:
-        assert item["auth"] == f"Bearer tok-{item['body']['agent']}"
-    assert any(
-        event["type"] == "ack" and not event.get("applied") and event["line"] == 99 for event in events
+def test_native_swarmchat_run_uses_server_reads_and_message_ids(tmp_path):
+    agents = [
+        Scripted([{"messages": ["one", "two", "three"]}, {}]),
+        Scripted([{"messages": ["right"], "acks": [99]}, {}]),
+        Scripted([{}, {}]),
+        Scripted([{}, {}]),
+    ]
+    result = run_config(
+        _cfg(
+            kind="swarmchat",
+            condition="c2b_swarmchat",
+            output_dir=str(tmp_path),
+            rounds=2,
+        ),
+        render=False,
+        agents=agents,
     )
-    assert not any("read #99" in item["body"]["text"] for item in server.received)
-    ack_posts = [item for item in server.received if item["body"]["kind"] == "ack"]
-    assert len(ack_posts) == 1
-    assert ack_posts[0]["body"]["text"].startswith("✓ ")
-    assert "one" in (result.run_dir / "doc_log.txt").read_text(encoding="utf-8")
-
-
-def test_swarmchat_server_error_keeps_the_local_note(tmp_path):
-    server = _swarmchat_server(status_code=500)
-    try:
-        agents = [
-            Scripted([{"messages": ["still local"]}, {}]),
-            Scripted([{}, {}]),
-            Scripted([{}, {}]),
-            Scripted([{}, {}]),
-        ]
-        result = run_config(_swarmchat_cfg(tmp_path, server), render=False, agents=agents)
-    finally:
-        server.shutdown()
-        server.server_close()
-
-    assert server.received and server.received[0]["body"]["text"] == "still local"
-    log = (result.run_dir / "doc_log.txt").read_text(encoding="utf-8")
-    assert "still local" in log
     events = _events(result.run_dir)
-    assert any(event["type"] == "message" and event.get("applied") and event["text"] == "still local" for event in events)
+    posted = [e for e in events if e["type"] == "message" and e.get("applied")]
+    assert {e["text"] for e in posted} == {"one", "two", "right"}
+    assert all(e["remote_id"] for e in posted)
+    exposed = [e for e in events if e["type"] == "exposure" and e["round"] == 2]
+    assert all(
+        set(e["native_read"])
+        == {m["line"] for m in posted if m["agent_id"] != e["agent_id"]}
+        for e in exposed
+    )
+    assert all(len(e["native_messages"]) == 3 for e in exposed)
+    config = json.loads((result.run_dir / "config.json").read_text())
+    assert config["swarmchat_transport"] == "native_local"
+    assert config["swarmchat"]["private"] is True
+    assert (result.run_dir / "swarmchat/admin.token").is_file()
+    assert not any("token" in key for key in config["swarmchat"])
+    assert any(e["type"] == "ack" and not e["applied"] for e in events)
+
+
+def test_non_string_messages_are_rejected():
+    prepared = validate_action(
+        handle="a1", action={"messages": [{"text": "hello"}, "valid"]},
+        round_num=1, palette=["S"], paint_budget=8, comms_enabled=True,
+        max_messages=2, max_chars=200,
+    )
+    assert prepared.messages == ["valid"]
+    assert any(item.get("reason") == "message_not_string" for item in prepared.rejections)

@@ -1,0 +1,6 @@
+Explicit coordination diagnostic (not the spontaneous-chat task):
+You must include one short coordination note in messages on every turn.
+On round 1, propose column ownership for slot-0, slot-1, slot-2 and slot-3 that covers A-X without overlaps. State which columns you claim.
+On later rounds, read the actual peer notes, acknowledge at least one exposed peer line in acks, and state your current claimed columns in a message. Reconcile conflicting claims rather than copying them blindly.
+Paint within your claimed columns. Keep the ownership plan in scratchpad. Do not invent peer notes or line numbers.
+Return the same JSON action schema, including messages, paints and scratchpad; include acks when peer notes are visible.

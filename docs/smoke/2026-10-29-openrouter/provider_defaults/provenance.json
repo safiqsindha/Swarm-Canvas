@@ -1,0 +1,17 @@
+{
+  "purpose": "development_smoke_test",
+  "research_evidence": false,
+  "source_snapshot_commit": "3d70a146e58278bd0073b02dd21e286b0c053065",
+  "manifest_git_commit_note": "The manifest records the temporary checkout HEAD, which predates uncommitted working files. The source_snapshot_commit identifies the published code actually used; the runtime source/config/prompt files were checked against the published snapshot.",
+  "included_files": "Explicit whitelist only; no native server database, admin tokens, user tokens, environment, or API keys.",
+  "artifact_sha256": {
+    "target.json": "46c6e2120033242d279a081741100dc7fdd266b60d472b180aaca5c3cbd0711d",
+    "smoke_summary.json": "5825c0e83ddcac424ad3eda1d8ece91af8bf1e7aa196c438b5bc7130af3ac3ae",
+    "config.json": "4f98987cd9a161563cded943b77b94921120ecba558187f7daecacfc8bffccc3",
+    "events.jsonl": "25dbdf67d772db3e73a3c74605aa00127b5a8ff54b550c73bb6642d0a733f168",
+    "scores.json": "cfa5eec3e7cf94db7e8759d8e604e89fa90ac9d9afaa29c3260abeca00b5b2c5",
+    "canvas/round_02.json": "81f99ef6617040b9210ad710f6cf91c47253b8cfab427e4f4bf45313da1eb109",
+    "canvas/round_03.json": "81f99ef6617040b9210ad710f6cf91c47253b8cfab427e4f4bf45313da1eb109",
+    "canvas/round_01.json": "81f99ef6617040b9210ad710f6cf91c47253b8cfab427e4f4bf45313da1eb109"
+  }
+}
