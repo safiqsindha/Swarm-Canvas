@@ -4,3 +4,4 @@ imageio
 pyyaml
 httpx
 pytest
+swarmchat==0.1.0

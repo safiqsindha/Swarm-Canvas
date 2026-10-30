@@ -30,10 +30,6 @@ def run_pilot(
         raise ValueError(
             "A live pilot requires one explicit OpenRouter model ID ending in :free; the random free router is not matched"
         )
-    if live and not swarmchat_url:
-        raise ValueError(
-            "SwarmChat is mandatory: supply --swarmchat-url for a live pilot"
-        )
     configs = []
     for target in TARGETS:
         for seed in range(1, repeats + 1):
@@ -47,6 +43,7 @@ def run_pilot(
                 if live:
                     cfg["model"]["name"] = model
                 if condition == "c2b_swarmchat":
+                    cfg["comms"]["backend"] = "remote" if swarmchat_url else "local"
                     cfg["comms"]["server_url"] = swarmchat_url
                     cfg["comms"]["token_file"] = token_file
                 _validate_config(cfg, None)

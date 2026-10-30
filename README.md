@@ -46,7 +46,7 @@ python cli.py export runs/<printed-run-directory> replay.json
 
 Each attempt gets a new directory. A manifest records its completion state, exact final frame and canvas hash, saved target and target hash, effective model settings, immutable slot IDs, prompt hashes, supplier settings, and token totals. Failed attempts remain marked failed and cannot be scored. Names are display labels; simultaneous duplicate renames are rejected.
 
-The event log separates API failures, malformed JSON, invalid actions, and deliberate passes. JSON gets one repair attempt; API errors do not trigger JSON repair. Read acknowledgments are accepted only for lines shown to that agent. Prompt exposure is not recorded as a native SwarmChat read receipt.
+The event log separates API failures, malformed JSON, invalid actions, and deliberate passes. JSON gets one repair attempt; API errors do not trigger JSON repair. Read acknowledgments are accepted only for lines shown to that agent. The document log records exposure alone; C2b records native server read confirmations separately.
 
 Metrics include coverage, target accuracy, per-round accuracy, correct cells destroyed, redundant paints, the first round reaching 90% accuracy with cumulative paints/tokens, and reliability counts. Token/cost data include repair calls. Missing provider cost metadata is unknown, not assumed free based on a successful response. Random smoke tests are not collaboration evidence.
 
@@ -60,13 +60,37 @@ The shared model-call layer blocks paid model IDs and other providers before sen
 
 Official references: [free model router](https://openrouter.ai/docs/guides/routing/routers/free-router), [provider price ceilings and fallback controls](https://openrouter.ai/docs/guides/routing/provider-selection).
 
-## SwarmChat integration status
+## Native SwarmChat
 
-C2b remains part of every pilot. Its current adapter POSTs accepted messages and acknowledgments to `{server_url}/channels/canvas/messages`, using a token per permanent slot. Existing token files keyed by starting handle also work; display-name changes do not change credentials. `configs/swarmchat_tokens.example.yaml` contains placeholders only.
+C2b uses the official [SwarmChat](https://github.com/Pranjal2041/swarmchat) server and client, pinned to version **0.1.0**. `swarmchat.io` is the project website, not an inference or hosted chat API endpoint. The adapter uses native `/v1` authentication, channel creation, sends, reads and read-position updates.
 
-**The existing adapter is an outbound HTTP mirror.** Agent inboxes still come from the harness log. No native remote inbox, addressed delivery, or server read-receipt API has been verified. C2a/C2b can currently test framing differences and delivery reliability; they cannot establish the benefit of distinct native channel capabilities. A working POST against a mock server does not verify compatibility with a deployed SwarmChat service.
+The default `comms.backend: local` starts the actual server on an ephemeral localhost port, provisions a distinct authenticated user for each permanent slot, and creates a private channel unique to the attempt. It saves the native database in `<run-dir>/swarmchat`, closes all clients, and stops the server after success or failure. No pre-existing SwarmChat login is used. No model is needed to run the chat server.
 
-Live C2b runs require `comms.server_url`; remote delivery failure aborts the attempt and marks it failed. Offline random/scripted fixtures may use the local mirror and are labeled development-only. Before real experiments, verify the actual SwarmChat service's authentication, channel isolation, write/read contracts, and receipt behavior, then implement and test the native adapter against those contracts. Never describe local fallback as a completed live SwarmChat trial.
+Run the complete transport check:
+
+```bash
+python cli.py swarmchat-check
+```
+
+Four scripted painters exchange notes through the actual server. The command verifies native message IDs, inbox delivery and all three peers' read receipts for every sender, and reports **zero model calls**. It prints the saved run directory. You can inspect that database afterward:
+
+```bash
+python -m swarmchat view --data <printed-run-directory>/swarmchat
+```
+
+Unlike the original mirror, the audit log is never an inbox source. Every observation comes from native server reads, and every send must succeed. All painters' inbox/receipt snapshots are fetched before advancing any read positions, so iteration order cannot expose same-round read receipts. New writes first become visible next round. Native sequence numbers may contain gaps because the server also logs read events.
+
+`swarmchat.json` and the run manifest record native client/server versions, channel ID/name, privacy, and slot-to-user mapping, without tokens. Exposure events retain message IDs and sender-visible native `read_by` states. `native_read` lists other senders' exposed messages confirmed via the native read API. A receipt means delivery to the harness observation, not proof that a model understood it. Explicit acknowledgments update native read positions; they do not create extra messages or consume the note allowance.
+
+This adapter exposes channel notes and native read receipts. DMs, threads and attachments are not part of the painters' action space. C2b therefore tests this particular native channel/receipt setup; any claim about the broader SwarmChat feature set needs a separately specified experiment.
+
+For a separately running server, set `comms.backend: remote`, its server origin in `comms.server_url`, and a local `comms.token_file`. Use the placeholder format in `configs/swarmchat_tokens.example.yaml`, with a distinct real user token per permanent slot. Starting-handle keys are also supported. Remote runs create a new private channel each time and leave the caller's server running. Missing/invalid credentials, unsupported server versions and transport failures abort the attempt; there is no local fallback.
+
+```bash
+python cli.py swarmchat-check --server-url http://127.0.0.1:8484 \
+  --token-file configs/swarmchat_tokens.yaml
+```
+
 
 ## Matched pilot
 
@@ -74,13 +98,12 @@ Live C2b runs require `comms.server_url`; remote delivery failure aborts the att
 # 3 targets × 5 seeds × 4 conditions = 60 offline smoke runs
 python cli.py pilot --output-dir runs
 
-# Optional development-only free-model check, once the SwarmChat endpoint is configured
+# Optional development-only free-model check; starts real local SwarmChat automatically
 python cli.py pilot --live --model '<provider>/<model>:free' \
-  --swarmchat-url '<server-url>' --token-file '<local-token-file>' \
   --repeats 1 --rounds 2 --output-dir runs
 ```
 
-The live command preflights all conditions before the first model call. It requires one explicit free model and a SwarmChat endpoint. Pilot manifests are updated after each completed run and remain marked failed if execution aborts. Development pilots are always labeled `research_evidence: false`; completing them is not authorization for confirmatory runs.
+The live command validates all configurations before the first model call and requires one explicit free model. Native local SwarmChat starts automatically for each C2b attempt. To use an existing server instead, add `--swarmchat-url` and `--token-file`; first run the dedicated transport check against that server to verify authentication and permissions. Pilot manifests are updated after each completed run and remain marked failed if execution aborts. Development pilots are always labeled `research_evidence: false`; completing them is not authorization for confirmatory runs.
 
 Before research runs, assess ceiling/floor effects, choose a fixed task set and repetition count, preregister the primary comparison, and define how reliability failures and provider/model changes affect eligibility. Expanding a pilot after inspecting effects must not be presented as a preregistered confirmatory result.
 

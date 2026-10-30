@@ -64,15 +64,20 @@ def test_exposure_lists_exactly_the_inbox_lines():
     assert [line.number for line in again] == log.exposure["slot-2"]
 
 
-def test_nocomms_and_swarmchat_cap():
+def test_nocomms_and_swarmchat_cap(tmp_path):
     quiet = NoComms()
     assert quiet.post("a1", "hi", 1) is None
     assert quiet.inbox("slot-0", 1) == []
     assert quiet.exposure["slot-0"] == []
-
-    chat = SwarmChatComms(server_url="", messages_per_round=2)
-    assert chat.post("a1", "one", 1) == 1
-    assert chat.post("a1", "two", 1) == 2
-    assert chat.post("a1", "three", 1) is None
-    assert chat.ack("a1", 1, 1) == 3
-    assert chat.remote_errors == []
+    chat = SwarmChatComms(agent_ids=["slot-0", "slot-1"], data_dir=tmp_path / "native")
+    try:
+        first = chat.post("slot-0", "one", 1)
+        second = chat.post("slot-0", "two", 1)
+        assert first and second > first
+        assert chat.post("slot-0", "three", 1) is None
+        assert chat.ack("slot-1", first, 1) == 0
+        chat.inbox("slot-1", 2)
+        assert chat.ack("slot-1", first, 2) == first
+        assert chat.remote_errors == []
+    finally:
+        chat.close()

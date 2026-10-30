@@ -186,26 +186,30 @@ def test_api_failure_is_not_json_failure_or_voluntary_pass(tmp_path):
     assert result.scores["reliability_ok"] is False
 
 
-def test_live_swarmchat_requires_endpoint_before_any_model_call(tmp_path):
+def test_remote_swarmchat_requires_endpoint_and_tokens_before_model_calls(tmp_path):
     cfg = _cfg(kind="swarmchat", agent_type="llm", output_dir=str(tmp_path))
     cfg["model"] = {"provider": "openrouter", "name": "test/model:free"}
+    cfg["comms"]["backend"] = "remote"
     with pytest.raises(ValueError, match="server_url"):
+        run_config(cfg, render=False)
+    cfg["comms"]["server_url"] = "http://example.invalid"
+    with pytest.raises(ValueError, match="real tokens"):
         run_config(cfg, render=False)
     assert not list(tmp_path.iterdir())
 
 
 def test_required_swarmchat_delivery_failure_marks_run_failed(tmp_path, monkeypatch):
+    from swarmchat.client import Client, ClientError
+
     cfg = _cfg(kind="swarmchat", agent_type="llm", output_dir=str(tmp_path), rounds=1)
     cfg["model"] = {"provider": "openrouter", "name": "test/model:free"}
-    cfg["comms"]["server_url"] = "http://swarmchat.invalid"
     monkeypatch.setattr(LLMAgent, "act", lambda self, obs: {"messages": ["hello"]})
 
     def fail(*args, **kwargs):
-        request = httpx.Request("POST", args[0])
-        return httpx.Response(503, request=request)
+        raise ClientError(503, "test failure")
 
-    monkeypatch.setattr(httpx, "post", fail)
-    with pytest.raises(RuntimeError, match="SwarmChat delivery failed"):
+    monkeypatch.setattr(Client, "send", fail)
+    with pytest.raises(RuntimeError, match="SwarmChat send failed"):
         run_config(cfg, render=False)
     directory = next(tmp_path.iterdir())
     assert json.loads((directory / "config.json").read_text())["status"] == "failed"
@@ -256,8 +260,13 @@ def test_pilot_includes_swarmchat_and_preflights_before_running(tmp_path):
             model="openrouter/free",
             swarmchat_url="http://test",
         )
-    with pytest.raises(ValueError, match="mandatory"):
-        run_pilot(output_root=tmp_path, live=True, model="test/model:free")
+    with pytest.raises(ValueError, match="real tokens"):
+        run_pilot(
+            output_root=tmp_path,
+            live=True,
+            model="test/model:free",
+            swarmchat_url="http://test.invalid",
+        )
     assert not list(tmp_path.iterdir())
     manifest = run_pilot(output_root=tmp_path, repeats=1, rounds=1)
     suite = json.loads(manifest.read_text())

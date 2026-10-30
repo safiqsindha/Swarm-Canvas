@@ -9,6 +9,7 @@ import re
 import subprocess
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from uuid import uuid4
@@ -93,7 +94,10 @@ def run_config(
     manifest = run_dir / "config.json"
     manifest.write_text(json.dumps({"run": run_dir.name, "status": "running"}) + "\n")
     try:
-        return _run_config(cfg, run_dir=run_dir, render=render, agents=agents)
+        with ExitStack() as resources:
+            return _run_config(
+                cfg, run_dir=run_dir, render=render, agents=agents, resources=resources
+            )
     except Exception as exc:
         saved = json.loads(manifest.read_text())
         saved.update(status="failed", error_type=type(exc).__name__)
@@ -131,10 +135,25 @@ def _validate_config(cfg: dict, agents: list | None) -> None:
     for agent in agents or []:
         if getattr(agent, "model_cfg", None):
             validate_model_policy(agent.model_cfg)
-    if live and kind == "swarmchat" and not cfg.get("comms", {}).get("server_url"):
-        raise ValueError(
-            "Live SwarmChat requires comms.server_url; local fallback is development-only"
+    if kind == "swarmchat":
+        comms_cfg = cfg.get("comms", {})
+        backend = comms_cfg.get(
+            "backend", "remote" if comms_cfg.get("server_url") else "local"
         )
+        if backend not in {"local", "remote"}:
+            raise ValueError("SwarmChat backend must be local or remote")
+        if backend == "local" and comms_cfg.get("server_url"):
+            raise ValueError("Local SwarmChat cannot use a remote server_url")
+        if backend == "remote":
+            if not comms_cfg.get("server_url"):
+                raise ValueError("Remote SwarmChat requires comms.server_url")
+            tokens = _read_tokens(comms_cfg.get("token_file"))
+            for index, handle in enumerate(handles):
+                token = tokens.get(f"slot-{index}", tokens.get(handle))
+                if not token or token == "replace-me":
+                    raise ValueError(
+                        "Remote SwarmChat requires real tokens for every slot"
+                    )
     _task(cfg)  # validate objective before allocating or calling models
 
 
@@ -162,7 +181,12 @@ def _task(cfg: dict) -> tuple[dict, list[str] | None]:
 
 
 def _run_config(
-    cfg: dict, *, run_dir: Path, render: bool = True, agents: list | None = None
+    cfg: dict,
+    *,
+    run_dir: Path,
+    resources: ExitStack,
+    render: bool = True,
+    agents: list | None = None,
 ) -> RunResult:
     seed = int(cfg["seed"])
     rounds = int(cfg["rounds"])
@@ -188,12 +212,14 @@ def _run_config(
     prompt_dir.mkdir(exist_ok=True)
 
     log_path = run_dir / ("doc_log.txt" if comms_enabled else "unused_log.txt")
-    comms = _build_comms(kind, comms_cfg, log_path if comms_enabled else None)
+    comms = _build_comms(
+        kind, comms_cfg, log_path if comms_enabled else None, run_dir, handles
+    )
     if kind == "swarmchat":
-        comms.tokens = {
-            f"slot-{i}": comms.tokens.get(f"slot-{i}", comms.tokens.get(h, ""))
-            for i, h in enumerate(handles)
-        }
+        resources.callback(comms.close)
+        (run_dir / "swarmchat.json").write_text(
+            json.dumps(comms.metadata(), indent=2) + "\n"
+        )
     if comms_enabled and log_path is not None:
         log_path.write_text(comms.render(), encoding="utf-8")
     supplier = Supplier(
@@ -234,8 +260,6 @@ def _run_config(
         slot.model_cfg is not None and slot.model_cfg.provider != "fake"
         for slot in slots
     )
-    if kind == "swarmchat":
-        comms.required = uses_live_models
     rng = random.Random(seed)
     events_path = run_dir / "events.jsonl"
     pngs: list[Path] = []
@@ -374,11 +398,10 @@ def _run_config(
             )
             if k in comms_cfg
         },
-        "swarmchat_transport": (
-            "required_http_mirror" if comms.required else "development_mirror"
-        )
+        "swarmchat_transport": comms.metadata()["transport"]
         if kind == "swarmchat"
         else None,
+        "swarmchat": comms.metadata() if kind == "swarmchat" else None,
         "swarmchat_errors": len(getattr(comms, "remote_errors", [])),
         "supplier": supplier_cfg,
     }
@@ -391,7 +414,9 @@ def _run_config(
     )
 
 
-def _build_comms(kind: str, comms_cfg: dict, log_path: Path | None):
+def _build_comms(
+    kind: str, comms_cfg: dict, log_path: Path | None, run_dir: Path, handles: list[str]
+):
     shared = dict(
         messages_per_round=int(comms_cfg.get("messages_per_round", 2)),
         max_chars=int(comms_cfg.get("max_chars", 200)),
@@ -402,9 +427,16 @@ def _build_comms(kind: str, comms_cfg: dict, log_path: Path | None):
         return DocLog(**shared)
     if kind == "swarmchat":
         tokens = _read_tokens(comms_cfg.get("token_file"))
+        mapped = {
+            f"slot-{i}": tokens.get(f"slot-{i}", tokens.get(handle, ""))
+            for i, handle in enumerate(handles)
+        }
         return SwarmChatComms(
+            agent_ids=list(mapped),
             server_url=str(comms_cfg.get("server_url") or ""),
-            tokens=tokens,
+            tokens=mapped,
+            data_dir=run_dir / "swarmchat",
+            channel_name=f"canvas-{run_dir.name[-32:]}",
             **shared,
         )
     return NoComms()
@@ -529,6 +561,8 @@ def _observe(
     paint_budget: int,
 ):
     observations = {}
+    if hasattr(comms, "begin_round"):
+        comms.begin_round(round_num)
     canvas_text = canvas.to_text()
     remaining = max(0, supplier.swarm_budget - supplier.granted_total)
     for slot in slots:
@@ -546,9 +580,26 @@ def _observe(
                 "type": "exposure",
                 "lines": shown,
                 "native_read": native,
+                "native_messages": [
+                    {
+                        "line": line.number,
+                        "remote_id": line.remote_id,
+                        "read_by": line.read_by,
+                    }
+                    for line in lines
+                    if line.remote_id
+                ],
             },
         )
-        formatted = [f"#{line.number} {line.agent}: {line.text}" for line in lines]
+        formatted = [
+            f"#{line.number} {line.agent}: {line.text}"
+            + (
+                f" [native read by: {', '.join(line.read_by) or 'nobody yet'}]"
+                if line.read_by is not None
+                else ""
+            )
+            for line in lines
+        ]
         observations[slot.index] = render_turn(
             round_num=round_num,
             rounds=rounds,
@@ -701,6 +752,14 @@ def _communicate(
                         "type": "message",
                         "applied": True,
                         "line": number,
+                        "remote_id": next(
+                            (
+                                line.remote_id
+                                for line in comms.lines
+                                if line.number == number
+                            ),
+                            None,
+                        ),
                         "text": text,
                     },
                 )

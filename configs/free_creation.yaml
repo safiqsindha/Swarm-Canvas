@@ -37,7 +37,7 @@ comms:
   acks_enabled: true
   inbox_context_lines: 20
   server_url: ''
-  token_file: configs/swarmchat_tokens.example.yaml
+  backend: local
 model:
   provider: openrouter
   name: openrouter/free

@@ -6,16 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
-import httpx
-
-
-@dataclass
-class Line:
-    number: int
-    agent: str
-    text: str
-    round: int
-    kind: str
+from swarm_canvas.channel_types import Line
+from swarm_canvas.swarmchat_native import SwarmChatComms as SwarmChatComms
 
 
 class Comms(Protocol):
@@ -114,60 +106,3 @@ class NoComms:
 
 class DocLog(_LogBook):
     """C2a. In-memory log mirrored to doc_log.txt. Acks do not use the note cap."""
-
-
-class SwarmChatComms(_LogBook):
-    """C2b. Local log plus an optional HTTP mirror.
-
-    The engine enforces note caps and round boundaries. Live model runs require
-    successful HTTP delivery. Only development fixtures may fall back locally.
-    This is an outbound mirror, not a native remote inbox/read-receipt adapter.
-    """
-
-    def __init__(
-        self,
-        server_url: str = "",
-        tokens: dict[str, str] | None = None,
-        required: bool = False,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.server_url = (server_url or "").rstrip("/")
-        self.tokens = dict(tokens or {})
-        self.required = required
-        self.remote_errors: list[str] = []
-
-    def post(self, agent: str, text: str, round: int) -> int | None:
-        number = super().post(agent, text, round)
-        if number is not None:
-            self._mirror(agent, text, round, "message")
-        return number
-
-    def ack(self, agent: str, line: int, round: int) -> int:
-        number = super().ack(agent, line, round)
-        if number:
-            self._mirror(agent, f"✓ {agent} read #{line}", round, "ack")
-        return number
-
-    def _mirror(self, agent: str, text: str, round: int, kind: str) -> None:
-        if not self.server_url:
-            if self.required:
-                raise RuntimeError("SwarmChat server_url is required")
-            return
-        token = self.tokens.get(agent, "")
-        url = f"{self.server_url}/channels/canvas/messages"
-        try:
-            response = httpx.post(
-                url,
-                json={"agent": agent, "text": text, "round": round, "kind": kind},
-                headers={"Authorization": f"Bearer {token}"} if token else {},
-                timeout=5.0,
-                trust_env=False,
-            )
-            response.raise_for_status()
-        except Exception as exc:  # fail soft: the local log already holds the line
-            self.remote_errors.append(type(exc).__name__)
-            if self.required:
-                raise RuntimeError(
-                    "Required SwarmChat delivery failed; run is invalid"
-                ) from exc

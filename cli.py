@@ -11,6 +11,7 @@ from swarm_canvas.models import ModelConfig
 from swarm_canvas.pilot import run_pilot
 from swarm_canvas.runner import run_from_yaml
 from swarm_canvas.score import load_run_target, score_run
+from swarm_canvas.swarmchat_check import check_swarmchat
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -46,7 +47,26 @@ def main(argv: list[str] | None = None) -> int:
     pilot_p.add_argument("--repeats", type=int, default=5)
     pilot_p.add_argument("--rounds", type=int, default=30)
 
+    check_p = sub.add_parser(
+        "swarmchat-check", help="native send/read/receipt check; zero model calls"
+    )
+    check_p.add_argument("--output-dir", default="runs")
+    check_p.add_argument("--server-url", default="")
+    check_p.add_argument("--token-file", default="")
+
     args = parser.parse_args(argv)
+    if args.cmd == "swarmchat-check":
+        print(
+            json.dumps(
+                check_swarmchat(
+                    output_root=Path(args.output_dir),
+                    server_url=args.server_url,
+                    token_file=args.token_file,
+                ),
+                indent=2,
+            )
+        )
+        return 0
     if args.cmd == "pilot":
         print(
             run_pilot(
@@ -102,6 +122,7 @@ def _export(run_dir: Path, dest: Path) -> None:
             event = json.loads(line)
             if event.get("type") in {
                 "paint",
+                "exposure",
                 "message",
                 "ack",
                 "grant",
@@ -115,6 +136,12 @@ def _export(run_dir: Path, dest: Path) -> None:
                         "round": event.get("round"),
                         "type": event.get("type"),
                         "agent": event.get("agent"),
+                        "agent_id": event.get("agent_id"),
+                        "line": event.get("line"),
+                        "log_line": event.get("log_line"),
+                        "remote_id": event.get("remote_id"),
+                        "native_messages": event.get("native_messages"),
+                        "native_read": event.get("native_read"),
                         "cell": event.get("cell"),
                         "color": event.get("color"),
                         "applied": event.get("applied"),
@@ -130,6 +157,7 @@ def _export(run_dir: Path, dest: Path) -> None:
         "rounds": config.get("rounds"),
         "final_hash": config.get("final_hash"),
         "target": load_run_target(run_dir, config),
+        "swarmchat": config.get("swarmchat"),
         "frames": frames,
         "events": events,
         "scores": {
