@@ -1,0 +1,417 @@
+{
+  "slot-0": [
+    {
+      "scratchpad": "slot-0 assigned columns A-F. Round 1 paint rows 1-10 S/W/Y/K/P per target within A-F; rows 11-16 W/B per target within A-F.",
+      "messages": [
+        "slot-0 assigned columns A-F; will paint rows 1-10 S/W/Y/K/P and rows 11-16 W/B within A-F."
+      ],
+      "acks": [],
+      "paints": [
+        {
+          "column": "A",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "C",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "D",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "E",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "F",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "A",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "B",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-0 assigned columns A-F; painting target rows 1-10 S/W/Y/K/P and rows 11-16 W/B within A-F"
+      ],
+      "acks": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "paints": [
+        {
+          "column": "C",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "D",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "E",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "F",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "C",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "D",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "E",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "F",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    }
+  ],
+  "slot-1": [
+    {
+      "scratchpad": "slot-1 columns G-L. Round1: paint G-L rows1-6 S, row7 K at K7, row8-10 K at K8-10 and www at L8-10, row11 B at L11, row12-14 B at G12-14 H12-14 I12-14 J12-14 K12-14 L12-14, row15-16 S at G-L. Request O R Gy L for future rounds.",
+      "messages": [
+        "slot-1 assigned columns G-L. Plan: fill S top block, K/w/B middle, S bottom within G-L."
+      ],
+      "acks": [],
+      "paints": [
+        {
+          "column": "G",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "I",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "K",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "G",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-1 assigned columns G-L. Plan: fill S top block, K/w/B middle, S bottom within G-L."
+      ],
+      "acks": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "paints": [
+        {
+          "column": "G",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "I",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "J",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "K",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "L",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "G",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "H",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    }
+  ],
+  "slot-2": [
+    {
+      "scratchpad": "slot-2 columns M-R. Round1: paint row10 M-R W, row11 M-R W, row12 M-R W, row13 M-R W, row14 M-R W, row15 M-R W, row16 M-R W. Request catalog colors O,R,Gy,L for later rows 2-9,11-13 details.",
+      "messages": [
+        "slot-2 assigned columns M-R; will paint W block rows 10-16 cols M-R this round."
+      ],
+      "acks": [],
+      "paints": [
+        {
+          "column": "M",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "N",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "O",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "P",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "Q",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "R",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "M",
+          "row": 11,
+          "color": "W"
+        },
+        {
+          "column": "N",
+          "row": 11,
+          "color": "W"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-2 assigned columns M-R; painting W block rows 10-16 cols M-R this round"
+      ],
+      "acks": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "paints": [
+        {
+          "column": "M",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "N",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "O",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "P",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "Q",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "R",
+          "row": 10,
+          "color": "W"
+        },
+        {
+          "column": "M",
+          "row": 11,
+          "color": "W"
+        },
+        {
+          "column": "N",
+          "row": 11,
+          "color": "W"
+        }
+      ]
+    }
+  ],
+  "slot-3": [
+    {
+      "messages": [
+        "slot-3 assigned columns S-X; painting target rows 1-10 in those columns"
+      ],
+      "acks": [],
+      "paints": [
+        {
+          "column": "S",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "U",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "V",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "W",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "S",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    },
+    {
+      "messages": [
+        "slot-3 assigned columns S-X; painting target rows 1-10 in those columns"
+      ],
+      "acks": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "paints": [
+        {
+          "column": "S",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "U",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "V",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "W",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "X",
+          "row": 1,
+          "color": "S"
+        },
+        {
+          "column": "S",
+          "row": 2,
+          "color": "S"
+        },
+        {
+          "column": "T",
+          "row": 2,
+          "color": "S"
+        }
+      ]
+    }
+  ]
+}
