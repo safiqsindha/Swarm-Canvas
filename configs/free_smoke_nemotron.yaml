@@ -1,0 +1,54 @@
+# Development smoke test. Makes free OpenRouter calls; requires OPENROUTER_API_KEY.
+condition: c2b_swarmchat
+run_code: free_smoke_nemotron35_no_reasoning
+seed: 1
+rounds: 2
+grid:
+  cols: 24
+  rows: 16
+agents:
+  count: 4
+  handles:
+  - a1
+  - a2
+  - a3
+  - a4
+  type: llm
+paint_budget_per_round: 8
+palette:
+- S
+- W
+- Y
+- B
+- w
+- P
+- G
+- K
+supplier:
+  catalog:
+  - O
+  - R
+  - Gy
+  - L
+  swarm_budget: 4
+comms:
+  kind: swarmchat
+  messages_per_round: 2
+  max_chars: 200
+  acks_enabled: true
+  inbox_context_lines: 20
+  server_url: ''
+  backend: local
+model:
+  provider: openrouter
+  name: nvidia/nemotron-3.5-super-vl:free
+  temperature: 0.2
+  max_tokens: 1600
+  reasoning_enabled: false
+prompts:
+  system: prompts/system.txt
+  turn: prompts/turn.txt
+output_dir: runs/
+task:
+  mode: reconstruction
+  target: targets/sun_boat.txt

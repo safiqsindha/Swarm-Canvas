@@ -58,6 +58,8 @@ The shared model-call layer blocks paid model IDs and other providers before sen
 
 `openrouter/free` is allowed for standalone smoke checks, but it selects models dynamically, so the pilot runner rejects it. Actual served model/provider IDs, response IDs, reported usage/cost, and call timing are recorded. Free-model availability and limits may interrupt a run; failed calls are flagged rather than interpreted as agent inactivity. No automatic fallback to a paid model occurs.
 
+For models with optional reasoning, `model.reasoning_enabled: false` explicitly disables it. Do not combine that with a reasoning token budget. Call records include finish reason, reported reasoning tokens, and whether visible content was returned, so token-limit failures can be distinguished from voluntary passes. The bounded example `configs/free_smoke_nemotron.yaml` uses two rounds and a fixed free NVIDIA model with reasoning disabled; it requires an API key in the environment and is a development diagnostic, not research evidence.
+
 Official references: [free model router](https://openrouter.ai/docs/guides/routing/routers/free-router), [provider price ceilings and fallback controls](https://openrouter.ai/docs/guides/routing/provider-selection).
 
 ## Native SwarmChat

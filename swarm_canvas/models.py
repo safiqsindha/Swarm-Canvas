@@ -20,6 +20,7 @@ class ModelConfig:
     api_key: str | None = None
     api_key_env: str | None = None
     reasoning_max_tokens: int | None = None
+    reasoning_enabled: bool | None = None
     fake_responses: list[str] | None = None
     transport: httpx.BaseTransport | None = None
     usage: dict = field(
@@ -100,6 +101,9 @@ def call_model(messages: list[dict], cfg: ModelConfig) -> str:
                 "input_tokens": int(usage.get("input", 0)),
                 "output_tokens": int(usage.get("output", 0)),
                 "cost_usd": usage.get("cost"),
+                "finish_reason": usage.get("finish_reason"),
+                "reasoning_tokens": usage.get("reasoning_tokens"),
+                "has_visible_content": usage.get("has_visible_content"),
                 "elapsed_seconds": round(time.monotonic() - started, 4),
             }
         )
@@ -130,6 +134,14 @@ class ModelCallError(RuntimeError):
 
 def validate_model_policy(cfg: ModelConfig) -> None:
     """Development lock: only fake responses or explicitly free OpenRouter models."""
+    if cfg.reasoning_enabled is not None and not isinstance(
+        cfg.reasoning_enabled, bool
+    ):
+        raise ValueError("reasoning_enabled must be a boolean or unset")
+    if cfg.reasoning_enabled is False and cfg.reasoning_max_tokens is not None:
+        raise ValueError(
+            "Do not combine disabled reasoning with a reasoning token budget"
+        )
     if cfg.provider == "fake":
         return
     if cfg.provider != "openrouter" or not (
@@ -218,8 +230,14 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
         "max_tokens": cfg.max_tokens,
         "messages": messages,
     }
-    if cfg.provider == "openrouter" and cfg.reasoning_max_tokens:
-        payload["reasoning"] = {"max_tokens": int(cfg.reasoning_max_tokens)}
+    if cfg.provider == "openrouter":
+        reasoning = {}
+        if cfg.reasoning_enabled is not None:
+            reasoning["enabled"] = cfg.reasoning_enabled
+        if cfg.reasoning_max_tokens is not None:
+            reasoning["max_tokens"] = int(cfg.reasoning_max_tokens)
+        if reasoning:
+            payload["reasoning"] = reasoning
     if cfg.provider == "openrouter":
         payload["provider"] = {
             "allow_fallbacks": False,
@@ -266,6 +284,13 @@ def _post_chat(url: str, payload: dict, cfg: ModelConfig) -> tuple[str, dict]:
         "provider": body.get("provider"),
         "response_id": body.get("id"),
         "cost": usage.get("cost"),
+        "finish_reason": body["choices"][0].get("finish_reason"),
+        "reasoning_tokens": (usage.get("completion_tokens_details") or {}).get(
+            "reasoning_tokens"
+        ),
+        "has_visible_content": bool(
+            _parts(body["choices"][0]["message"].get("content")).strip()
+        ),
     }
 
 

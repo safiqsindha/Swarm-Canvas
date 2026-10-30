@@ -380,6 +380,7 @@ def _run_config(
             "temperature": model_cfg.temperature,
             "max_tokens": model_cfg.max_tokens,
             "reasoning_max_tokens": model_cfg.reasoning_max_tokens,
+            "reasoning_enabled": model_cfg.reasoning_enabled,
             "paint_budget": budget,
             "policy": "openrouter_free_only",
         },
@@ -469,6 +470,7 @@ def _model_config(model: dict) -> ModelConfig:
         api_key=model.get("api_key"),
         api_key_env=model.get("api_key_env"),
         reasoning_max_tokens=model.get("reasoning_max_tokens"),
+        reasoning_enabled=model.get("reasoning_enabled"),
         fake_responses=list(responses) if responses else None,
     )
 
@@ -909,6 +911,7 @@ def _public_model(cfg: ModelConfig) -> dict:
         "temperature": cfg.temperature,
         "max_tokens": cfg.max_tokens,
         "reasoning_max_tokens": cfg.reasoning_max_tokens,
+        "reasoning_enabled": cfg.reasoning_enabled,
         "paint_budget": cfg.paint_budget,
     }
 

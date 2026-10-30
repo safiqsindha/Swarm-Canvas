@@ -274,3 +274,51 @@ def test_pilot_includes_swarmchat_and_preflights_before_running(tmp_path):
     assert "c2b_swarmchat" in suite["conditions"]
     assert suite["research_evidence"] is False and suite["status"] == "completed"
     assert all(r["scores"]["token_totals"]["calls"] == 0 for r in suite["runs"])
+
+
+def test_disabled_reasoning_and_truncation_metadata_are_preserved():
+    requests = []
+
+    def handle(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "model": "test/model:free",
+                "choices": [{"finish_reason": "length", "message": {"content": ""}}],
+                "usage": {
+                    "prompt_tokens": 20,
+                    "completion_tokens": 100,
+                    "completion_tokens_details": {"reasoning_tokens": 100},
+                    "cost": 0,
+                },
+            },
+        )
+
+    cfg = ModelConfig(
+        provider="openrouter",
+        name="test/model:free",
+        reasoning_enabled=False,
+        transport=httpx.MockTransport(handle),
+    )
+    slots = _build_slots(["a1"], "llm", 1, 8, ["S"], cfg, "c2b", "swarmchat", None)
+    effective = slots[0].model_cfg
+    assert effective.reasoning_enabled is False
+    assert call_model([{"role": "user", "content": "test"}], effective) == ""
+    assert requests[0]["reasoning"] == {"enabled": False}
+    assert requests[0]["provider"]["max_price"]["completion"] == 0
+    record = effective.call_records[0]
+    assert record["finish_reason"] == "length"
+    assert record["reasoning_tokens"] == 100
+    assert record["has_visible_content"] is False
+
+
+def test_disabled_reasoning_rejects_conflicting_token_budget():
+    cfg = ModelConfig(
+        provider="openrouter",
+        name="test/model:free",
+        reasoning_enabled=False,
+        reasoning_max_tokens=100,
+    )
+    with pytest.raises(ValueError, match="Do not combine"):
+        call_model([{"role": "user", "content": "test"}], cfg)
