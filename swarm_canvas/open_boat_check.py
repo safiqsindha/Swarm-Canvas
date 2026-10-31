@@ -15,12 +15,15 @@ from swarm_canvas.request_budget import model_request_budget
 from swarm_canvas.runner import load_config, run_config, resume_llm_run
 
 
-def run_batch(seeds=(11,), rounds=4, output_root=None):
+def run_batch(seeds=(11,), rounds=4, output_root=None, *, interface_feedback=None):
     if not seeds or len(seeds) > 8 or len(set(seeds)) != len(seeds):
         raise ValueError('select between one and eight distinct seeds')
     if not 1 <= rounds <= 12:
         raise ValueError('development runs permit 1 to 12 rounds')
     cfg = load_config(ROOT / 'configs/open_boat_dev.yaml')
+    if interface_feedback is not None:
+        from swarm_canvas.interface_feedback import configure
+        cfg['interface_feedback'] = configure({'interface_feedback': interface_feedback})
     if cfg['model']['name'] != MODEL or cfg['model']['provider'] != 'openrouter':
         raise ValueError('smoke check requires the pinned free OpenRouter model')
     cap = len(seeds) * rounds * len(cfg['agents']['handles']) * 2
@@ -35,7 +38,7 @@ def run_batch(seeds=(11,), rounds=4, output_root=None):
     source['configs/open_boat_dev.yaml'] = hashlib.sha256((ROOT / 'configs/open_boat_dev.yaml').read_bytes()).hexdigest()
     plan = {'status': 'running', 'research_evidence': False, 'seeds': list(seeds), 'rounds': rounds,
             'max_http_attempts': cap, 'interval_seconds': 3.5, 'preflight': quota,
-            'source_sha256': source, 'runs': []}
+            'source_sha256': source, 'interface_feedback': cfg.get('interface_feedback'), 'runs': []}
     manifest = root / 'batch.json'
     def save():
         tmp = root / 'batch.json.tmp'
@@ -85,6 +88,8 @@ def resume_batch(batch_dir):
     if source != plan.get('source_sha256'):
         raise ValueError('source files changed since batch creation')
     cfg = load_config(ROOT / 'configs/open_boat_dev.yaml')
+    if plan.get('interface_feedback') is not None:
+        cfg['interface_feedback'] = plan['interface_feedback']
     if cfg['model']['name'] != MODEL or cfg['model']['provider'] != 'openrouter':
         raise ValueError('resume requires the pinned free OpenRouter model')
     cfg.update(seed=plan['seeds'][0], rounds=plan['rounds'], output_dir=str(root))

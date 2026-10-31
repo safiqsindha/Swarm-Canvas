@@ -18,6 +18,34 @@ def test_open_condition_has_all_switches_off_and_no_reference(tmp_path):
     assert 'Suggested target-derived paints' not in prompt and 'TARGET (visible' not in prompt
 
 
+def test_optional_interface_reports_actual_own_previous_actions(tmp_path):
+    cfg = _cfg(output_dir=str(tmp_path), rounds=2,
+               interface_feedback={'color_legend': True, 'action_results': True})
+    agents = [Scripted([{'paints': [{'cell': 'A1', 'color': 'S'}, {'cell': 'B1', 'color': 'O'}],
+                        'requests': ['O']}, {}]),
+              Scripted([{'paints': [{'cell': 'C1', 'color': 'Y'}]}, {}]),
+              Scripted([{}, {}]), Scripted([{}, {}])]
+    result = run_config(cfg, render=False, agents=agents)
+    first = agents[0].seen[0]
+    second = agents[0].seen[1]
+    assert 'S = light blue' in first and 'O = orange' in first and 'first round' in first
+    assert '"cell":"A1","color":"S"' in second
+    assert '"cell":"B1","color":"O","reason":"color"' in second
+    assert '"type":"grant","color":"O"' in second
+    assert '"cell":"C1"' not in second
+    assert json.loads((result.run_dir / 'config.json').read_text())['interface_feedback']['action_results']
+
+
+def test_interface_feedback_defaults_off_and_rejects_bad_settings(tmp_path):
+    cfg = _cfg(output_dir=str(tmp_path), rounds=1)
+    result = run_config(cfg, render=False)
+    text = (result.run_dir / 'prompts_rendered/round_01_slot-0.txt').read_text()
+    assert 'COLOR LEGEND' not in text and 'YOUR PREVIOUS-ROUND ACTION RESULTS' not in text
+    cfg['interface_feedback'] = {'color_legend': 'yes'}
+    with pytest.raises(ValueError, match='boolean'):
+        run_config(cfg, render=False)
+
+
 def test_independent_suggestions_and_requirements_are_visible_and_logged(tmp_path):
     cfg = _cfg(kind='swarmchat', output_dir=str(tmp_path), rounds=1,
                task={'mode': 'free_creation', 'goal': 'Paint a boat', 'open_coordination': True},

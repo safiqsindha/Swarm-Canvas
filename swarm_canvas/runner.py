@@ -23,6 +23,7 @@ import yaml
 from swarm_canvas.agents import LLMAgent, RandomAgent
 from swarm_canvas.boundary_state import save_boundary, restore_core
 from swarm_canvas.assistance import configure as configure_assistance, instructions as assistance_instructions
+from swarm_canvas.interface_feedback import configure as configure_interface, previous_results, instructions as interface_instructions
 from swarm_canvas.comms import DocLog, NoComms, SwarmChatComms
 from swarm_canvas.engine import Canvas
 from swarm_canvas.models import ModelConfig, validate_model_policy
@@ -292,6 +293,7 @@ def _validate_config(cfg: dict, agents: list | None) -> None:
                     )
     _task(cfg)  # validate objective before allocating or calling models
     assistance, _ = configure_assistance(cfg)
+    configure_interface(cfg)
     if assistance['assigned_territories'] and len(handles) > 24:
         raise ValueError('assigned territories require at most one agent per column')
 
@@ -344,6 +346,7 @@ def _run_config(
     run_id = run_dir.name
     task, plate = _task(cfg)
     assistance, assistance_target = configure_assistance(cfg)
+    interface = configure_interface(cfg)
     if assistance['assigned_territories'] and len(cfg['agents']['handles']) > cols:
         raise ValueError('assigned territories require at most one agent per column')
     if assistance_target is not None:
@@ -415,6 +418,7 @@ def _run_config(
                     "model": _public_model(model_cfg),
                     "comms": kind,
                     "assistance": assistance,
+                    "interface_feedback": interface,
                     "resume_config_sha256": _resume_config_hash(cfg),
                     "resume_source_sha256": _resume_source_hash(),
                     "resume_python_version": list(sys.version_info[:3]),
@@ -496,6 +500,7 @@ def _run_config(
                     budget,
                     assistance,
                     assistance_target,
+                    interface,
                 )
                 actions = _act(
                     slots, observations, concurrent=cfg["agents"].get("type") == "llm"
@@ -639,6 +644,7 @@ def _run_config(
         "swarmchat": comms.metadata() if kind == "swarmchat" else None,
         "swarmchat_errors": len(getattr(comms, "remote_errors", [])),
         "assistance": assistance,
+        "interface_feedback": interface,
         "supplier": supplier_cfg,
     }
     (run_dir / "config.json").write_text(
@@ -804,12 +810,14 @@ def _observe(
     paint_budget: int,
     assistance: dict | None = None,
     assistance_target: list[str] | None = None,
+    interface: dict | None = None,
 ):
     observations = {}
     if hasattr(comms, "begin_round"):
         comms.begin_round(round_num)
     canvas_text = canvas.to_text()
     remaining = max(0, supplier.swarm_budget - supplier.granted_total)
+    feedback = previous_results(Path(events.name), round_num) if interface and interface['action_results'] else {}
     for slot in slots:
         viewer = f"slot-{slot.index}"
         lines = comms.inbox(viewer, round_num)
@@ -868,6 +876,11 @@ def _observe(
                                             len(slots), slot.palette, paint_budget)
             if extra:
                 observations[slot.index] += '\n\nOptional experimental assistance:\n' + extra
+        if interface:
+            extra = interface_instructions(interface, slot.palette, supplier.catalog,
+                                           feedback.get(slot.agent_id, []), round_num)
+            if extra:
+                observations[slot.index] += '\n\n' + extra
         (prompt_dir / f"round_{round_num:02d}_slot-{slot.index}.txt").write_text(
             observations[slot.index] + "\n", encoding="utf-8"
         )
