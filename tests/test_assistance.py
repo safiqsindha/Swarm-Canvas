@@ -82,3 +82,14 @@ def test_batch_stops_and_saves_failure(tmp_path, monkeypatch):
     manifest = json.loads(next(tmp_path.glob('open_boat_batch_*/batch.json')).read_text())
     assert manifest['status'] == 'failed' and len(manifest['runs']) == 1
     assert manifest['http_attempts'] == 0 and manifest['max_http_attempts'] == 16
+
+
+def test_peer_ack_requirement_reports_invalid_ack_without_changing_action(tmp_path):
+    cfg = _cfg(kind='swarmchat', output_dir=str(tmp_path), rounds=2,
+               assistance={'require_peer_acks': True})
+    agents = [Scripted([{'messages': ['hello']}, {'acks': [9999]}]) for _ in range(4)]
+    result = run_config(cfg, render=False, agents=agents)
+    events = [json.loads(line) for line in (result.run_dir / 'events.jsonl').read_text().splitlines()]
+    violations = [e for e in events if e['type'] == 'assistance_violation' and e['reason'] == 'required_peer_ack_missing']
+    assert len(violations) == 4 and all(e['round'] == 2 for e in violations)
+    assert not any(e['type'] == 'ack' and e.get('applied') for e in events)
