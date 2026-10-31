@@ -8,9 +8,10 @@ import os
 import random
 import re
 import subprocess
+import sys
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from contextvars import copy_context
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -20,7 +21,7 @@ from uuid import uuid4
 import yaml
 
 from swarm_canvas.agents import LLMAgent, RandomAgent
-from swarm_canvas.boundary_state import save_boundary
+from swarm_canvas.boundary_state import save_boundary, restore_core
 from swarm_canvas.assistance import configure as configure_assistance, instructions as assistance_instructions
 from swarm_canvas.comms import DocLog, NoComms, SwarmChatComms
 from swarm_canvas.engine import Canvas
@@ -82,6 +83,112 @@ def run_from_yaml(
     return run_config(cfg, render=render, agents=agents)
 
 
+
+
+@contextmanager
+def _run_lock(run_dir):
+    """Prevent two local processes from modifying one run simultaneously."""
+    try:
+        import fcntl
+    except ImportError as exc:
+        raise RuntimeError('run locking requires POSIX file locks') from exc
+    fd = os.open(Path(run_dir) / '.run.lock', os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError('run is already active or being recovered') from exc
+        yield
+    finally:
+        os.close(fd)
+
+def _resume_config_hash(cfg):
+    return hashlib.sha256(json.dumps(cfg, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def _resume_source_hash():
+    files = [*sorted((ROOT / 'swarm_canvas').glob('*.py')),
+             *sorted((ROOT / 'prompts').glob('*.txt')),
+             ROOT / 'targets/sun_boat.txt']
+    h = hashlib.sha256()
+    for path in files:
+        h.update(str(path.relative_to(ROOT)).encode() + b'\0')
+        h.update(hashlib.sha256(path.read_bytes()).digest())
+    return h.hexdigest()
+
+
+def resume_random_run(cfg: dict, run_dir: str | Path, *, on_round=None) -> RunResult:
+    """Resume a killed built-in random-agent run, only at a clean native-chat boundary.
+
+    This explicitly rejects live/fake LLMs, custom agents, partial-round actions,
+    changed configuration or source, and remote SwarmChat. It does not issue model requests.
+    """
+    run_dir = Path(run_dir).resolve()
+    with _run_lock(run_dir):
+        return _resume_random_run_locked(cfg, run_dir, on_round=on_round)
+
+
+def resume_llm_run(cfg: dict, run_dir: str | Path, *, on_round=None) -> RunResult:
+    """Resume a built-in OpenRouter agent run at a clean, budget-matched boundary.
+
+    The caller must first reopen the original durable model_request_budget.
+    Any request after the checkpoint makes automatic continuation unsafe.
+    """
+    run_dir = Path(run_dir).resolve()
+    with _run_lock(run_dir):
+        return _resume_random_run_locked(cfg, run_dir, on_round=on_round, llm=True)
+
+
+def _resume_random_run_locked(cfg, run_dir, *, on_round=None, llm=False):
+    _validate_config(cfg, None)
+    config = json.loads((run_dir / 'config.json').read_text())
+    expected = 'llm' if llm else 'random'
+    if (config.get('status') != 'running' or not config.get('resume_builtin_' + expected)
+            or cfg['agents'].get('type', 'random') != expected):
+        raise ValueError('only interrupted built-in ' + expected + '-agent runs can be resumed')
+    if llm and cfg.get('model', {}).get('provider') != 'openrouter':
+        raise ValueError('LLM continuation requires free OpenRouter models')
+    if cfg.get('comms', {}).get('kind') != 'swarmchat' or cfg['comms'].get('backend', 'local') != 'local' or cfg['comms'].get('server_url'):
+        raise ValueError('resume requires the original local native SwarmChat')
+    if cfg.get('task', {}).get('mode', 'free_creation') != 'free_creation' or any(config.get('assistance', {}).get(k) for k in ('reference_image', 'assigned_territories', 'suggested_paints', 'require_messages', 'require_peer_acks')):
+        raise ValueError('resume currently supports unassisted free creation only')
+    if (_resume_config_hash(cfg) != config.get('resume_config_sha256')
+            or _resume_source_hash() != config.get('resume_source_sha256')
+            or list(sys.version_info[:3]) != config.get('resume_python_version')):
+        raise ValueError('configuration, source, or Python version changed')
+    recovery = restore_core(run_dir)
+    if recovery['round'] >= int(cfg['rounds']):
+        raise ValueError('no remaining round to resume')
+    state = json.loads((run_dir / config['boundary_state']).read_text())
+    if llm:
+        from swarm_canvas.request_budget import budget_checkpoint
+        saved_budget = state.get('budget')
+        if not saved_budget or budget_checkpoint() != saved_budget:
+            raise ValueError('original budget ledger or boundary attempt count does not match')
+    if (run_dir / 'events.jsonl').stat().st_size != state['events_offset']:
+        raise ValueError('partial-round events exist; automatic continuation refused')
+    trace = run_dir / 'traces.jsonl'
+    for line in trace.read_text().splitlines():
+        event = json.loads(line)
+        if not llm and event.get('name') == 'generate-painter-action':
+            raise ValueError('model-call traces found in a random-agent run')
+    with ExitStack() as resources:
+        comms_cfg = cfg['comms']
+        comms = SwarmChatComms(agent_ids=[f"slot-{i}" for i in range(len(cfg['agents']['handles']))],
+            data_dir=run_dir / 'swarmchat', recovery_state=recovery['swarmchat_metadata'],
+            path=run_dir / 'doc_log.txt', messages_per_round=int(comms_cfg.get('messages_per_round', 2)),
+            max_chars=int(comms_cfg.get('max_chars', 200)),
+            inbox_context_lines=int(comms_cfg.get('inbox_context_lines', 20)))
+        resources.callback(comms.close)
+        # Hold both run and native-server locks while rechecking before writing a new trace.
+        verified = restore_core(run_dir)
+        if verified['round'] != recovery['round'] or (run_dir / 'events.jsonl').stat().st_size != state['events_offset']:
+            raise ValueError('boundary changed during recovery')
+        resources.enter_context(trace_run(run_dir, {'condition': cfg['condition'],
+            'seed': int(cfg['seed']), 'rounds': int(cfg['rounds'])}, resume=True))
+        return _run_config(cfg, run_dir=run_dir, resources=resources, render=False,
+                           on_round=on_round, recovery=recovery, recovery_comms=comms)
+
 def run_config(
     cfg: dict,
     *,
@@ -105,6 +212,7 @@ def run_config(
     manifest.write_text(json.dumps({"run": run_dir.name, "status": "running"}) + "\n")
     try:
         with ExitStack() as resources:
+            resources.enter_context(_run_lock(run_dir))
             recorder, root = resources.enter_context(trace_run(run_dir, {
                 "condition": cfg["condition"], "seed": int(cfg["seed"]),
                 "rounds": int(cfg["rounds"]), "prompt_hashes": prompt_hashes(),
@@ -225,6 +333,8 @@ def _run_config(
     on_round: Callable[[dict], None] | None = None,
     render: bool = True,
     agents: list | None = None,
+    recovery: dict | None = None,
+    recovery_comms: SwarmChatComms | None = None,
 ) -> RunResult:
     seed = int(cfg["seed"])
     rounds = int(cfg["rounds"])
@@ -255,15 +365,24 @@ def _run_config(
     prompt_dir.mkdir(exist_ok=True)
 
     log_path = run_dir / ("doc_log.txt" if comms_enabled else "unused_log.txt")
-    comms = _build_comms(
-        kind, comms_cfg, log_path if comms_enabled else None, run_dir, handles
-    )
+    if recovery is None:
+        comms = _build_comms(kind, comms_cfg, log_path if comms_enabled else None, run_dir, handles)
+    else:
+        if recovery_comms is None:
+            raise ValueError('verified recovery channel is required')
+        comms = recovery_comms
     if kind == "swarmchat":
         resources.callback(comms.close)
+        if recovery is not None:
+            current = json.loads((run_dir / 'config.json').read_text())
+            checked = restore_core(run_dir)
+            saved_state = json.loads((run_dir / current['boundary_state']).read_text())
+            if checked['round'] != recovery['round'] or (run_dir / 'events.jsonl').stat().st_size != saved_state['events_offset']:
+                raise ValueError('boundary changed during recovery')
         (run_dir / "swarmchat.json").write_text(
             json.dumps(comms.metadata(), indent=2) + "\n"
         )
-    if comms_enabled and log_path is not None:
+    if recovery is None and comms_enabled and log_path is not None:
         log_path.write_text(comms.render(), encoding="utf-8")
     supplier = Supplier(
         [str(color) for color in supplier_cfg.get("catalog", [])],
@@ -282,29 +401,52 @@ def _run_config(
         kind,
         agents,
     )
-    (run_dir / "config.json").write_text(
-        json.dumps(
-            {
-                "run": run_id,
-                "status": "running",
-                "schema_version": 2,
-                "seed": seed,
-                "condition": condition,
-                "rounds": rounds,
-                "task": task,
-                "model": _public_model(model_cfg),
-                "comms": kind,
-                "assistance": assistance,
-            },
-            indent=2,
+    if recovery is None:
+        (run_dir / "config.json").write_text(
+            json.dumps(
+                {
+                    "run": run_id,
+                    "status": "running",
+                    "schema_version": 2,
+                    "seed": seed,
+                    "condition": condition,
+                    "rounds": rounds,
+                    "task": task,
+                    "model": _public_model(model_cfg),
+                    "comms": kind,
+                    "assistance": assistance,
+                    "resume_config_sha256": _resume_config_hash(cfg),
+                    "resume_source_sha256": _resume_source_hash(),
+                    "resume_python_version": list(sys.version_info[:3]),
+                    "resume_builtin_random": agents is None and cfg["agents"].get("type", "random") == "random",
+                    "resume_builtin_llm": agents is None and cfg["agents"].get("type") == "llm" and model_cfg.provider == "openrouter",
+                },
+                indent=2,
+            )
+            + "\n"
         )
-        + "\n"
-    )
     uses_live_models = any(
         slot.model_cfg is not None and slot.model_cfg.provider != "fake"
         for slot in slots
     )
     rng = random.Random(seed)
+    start_round = 1
+    if recovery is not None:
+        canvas, supplier, rng = recovery['canvas'], recovery['supplier'], recovery['rng']
+        start_round = recovery['round'] + 1
+        def as_tuple(value):
+            return tuple(as_tuple(x) for x in value) if isinstance(value, list) else value
+        for slot, saved in zip(slots, recovery['agents'], strict=True):
+            if slot.agent_id != saved['agent_id']:
+                raise ValueError('unsupported or inconsistent agent boundary state')
+            slot.handle, slot.palette, slot.scratchpad = saved['handle'], list(saved['palette']), saved['scratchpad']
+            slot.agent.handle, slot.agent.scratchpad = slot.handle, slot.scratchpad
+            if isinstance(slot.agent, RandomAgent) and 'random_state' in saved:
+                slot.agent.rng.setstate(as_tuple(saved['random_state']))
+            elif isinstance(slot.agent, LLMAgent) and 'model_usage' in saved:
+                slot.model_cfg.usage = dict(saved['model_usage'])
+            else:
+                raise ValueError('unsupported or inconsistent agent boundary state')
     events_path = run_dir / "events.jsonl"
     pngs: list[Path] = []
     for slot in slots:
@@ -333,8 +475,8 @@ def _run_config(
         task.get("open_coordination", False),
     )
     call_offsets = {slot.index: 0 for slot in slots}
-    with events_path.open("w", encoding="utf-8") as events:
-        for round_num in range(1, rounds + 1):
+    with events_path.open("a" if recovery is not None else "w", encoding="utf-8") as events:
+        for round_num in range(start_round, rounds + 1):
             with observation("process-round", metadata={"round": round_num}):
                 _deliver(supplier, slots, round_num)
                 observations = _observe(

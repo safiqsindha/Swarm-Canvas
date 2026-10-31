@@ -74,3 +74,161 @@ run_config(cfg, render=False, agents=agents, on_round=pause)
         except ProcessLookupError:
             pass
         process.wait(timeout=10)
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='requires process groups and SIGKILL')
+def test_random_run_resumes_at_clean_boundary_identically(tmp_path):
+    from swarm_canvas.runner import load_config, run_config, resume_random_run
+    output = tmp_path / 'interrupted'
+    marker = tmp_path / 'paused'
+    code = '''
+import os, signal, sys
+from pathlib import Path
+from swarm_canvas.runner import load_config, run_config
+from swarm_canvas.paths import ROOT
+cfg = load_config(ROOT / "configs/c2b_swarmchat.yaml")
+cfg.update(rounds=3, output_dir=sys.argv[1], task={'mode': 'free_creation'})
+def pause(progress):
+    if progress['round'] == 1:
+        Path(sys.argv[2]).write_text(progress['run'])
+        os.kill(os.getpid(), signal.SIGSTOP)
+run_config(cfg, render=False, on_round=pause)
+'''
+    process = subprocess.Popen([sys.executable, '-c', code, str(output), str(marker)],
+                               cwd=ROOT, start_new_session=True, stdout=subprocess.DEVNULL,
+                               stderr=subprocess.DEVNULL)
+    try:
+        deadline = time.monotonic() + 45
+        while not marker.exists() and process.poll() is None and time.monotonic() < deadline:
+            time.sleep(.1)
+        assert marker.exists(), 'run did not reach a resumable boundary'
+        cfg = load_config(ROOT / 'configs/c2b_swarmchat.yaml')
+        cfg.update(rounds=3, output_dir=str(output), task={'mode': 'free_creation'})
+        path = output / marker.read_text()
+        with pytest.raises(ValueError, match='already active'):
+            resume_random_run(cfg, path)
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait(timeout=10)
+
+        trace = path / 'traces.jsonl'
+        trace_before = trace.read_bytes()
+        altered_cfg = dict(cfg, seed=99)
+        with pytest.raises(ValueError, match='configuration, source, or Python version changed'):
+            resume_random_run(altered_cfg, path)
+        assert trace.read_bytes() == trace_before
+        events = path / 'events.jsonl'
+        before = events.read_bytes()
+        with events.open('ab') as handle:
+            handle.write(b'{"type":"partial"}\n')
+        with pytest.raises(ValueError, match='partial-round events'):
+            resume_random_run(cfg, path)
+        assert trace.read_bytes() == trace_before
+        events.write_bytes(before)
+        # A stale channel with an unlogged later side effect must fail before new traces are written.
+        import shutil
+        from swarm_canvas.swarmchat_native import SwarmChatComms, SwarmChatError
+        altered_path = tmp_path / 'altered-channel'
+        shutil.copytree(path, altered_path)
+        boundary_cfg = json.loads((altered_path / 'config.json').read_text())
+        boundary = json.loads((altered_path / boundary_cfg['boundary_state']).read_text())
+        channel = SwarmChatComms(agent_ids=[f'slot-{i}' for i in range(4)],
+                                 data_dir=altered_path / 'swarmchat', recovery_state=boundary['swarmchat'])
+        channel.post('slot-0', 'uncommitted side effect', 2)
+        channel.close()
+        stale_trace = (altered_path / 'traces.jsonl').read_bytes()
+        with pytest.raises(SwarmChatError, match='differs from the saved boundary'):
+            resume_random_run(cfg, altered_path)
+        assert (altered_path / 'traces.jsonl').read_bytes() == stale_trace
+        resumed = resume_random_run(cfg, path)
+        comparison_cfg = load_config(ROOT / 'configs/c2b_swarmchat.yaml')
+        comparison_cfg.update(rounds=3, output_dir=str(tmp_path / 'baseline'), task={'mode': 'free_creation'})
+        baseline = run_config(comparison_cfg, render=False)
+        assert resumed.final_hash == baseline.final_hash
+        assert resumed.scores['paints'] == baseline.scores['paints']
+        assert resumed.scores['messages'] == baseline.scores['messages']
+        assert len((path / 'events.jsonl').read_text().splitlines()) == len((baseline.run_dir / 'events.jsonl').read_text().splitlines())
+    finally:
+        try: os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError: pass
+        process.wait(timeout=10)
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='requires process groups and SIGKILL')
+def test_llm_run_reopens_budget_and_resumes_only_at_clean_boundary(tmp_path, monkeypatch):
+    import httpx
+    from swarm_canvas import models
+    from swarm_canvas.request_budget import model_request_budget, inspect_ledger
+    from swarm_canvas.runner import load_config, resume_llm_run
+
+    output = tmp_path / 'runs'
+    output.mkdir()
+    ledger = tmp_path / 'budget.sqlite3'
+    marker = tmp_path / 'paused'
+    code = '''
+import os, signal, sys, httpx
+from pathlib import Path
+from swarm_canvas import models
+from swarm_canvas.request_budget import model_request_budget
+from swarm_canvas.runner import load_config, run_config
+from swarm_canvas.paths import ROOT
+def reply(request):
+    return httpx.Response(200, json={'id':'test', 'model':'test/model:free', 'choices':[{'message':{'content':'{"messages":["hello"],"paints":[]}'}, 'finish_reason':'stop'}], 'usage':{'prompt_tokens':3,'completion_tokens':2,'cost':0}})
+models._client = lambda cfg: httpx.Client(transport=httpx.MockTransport(reply), event_hooks={'request':[models.before_request], 'response':[models.after_response]})
+cfg = load_config(ROOT / 'configs/open_boat_dev.yaml')
+cfg.update(rounds=2, output_dir=sys.argv[1])
+cfg['model']['name'] = 'test/model:free'
+def pause(progress):
+    Path(sys.argv[3]).write_text(progress['run'])
+    os.kill(os.getpid(), signal.SIGSTOP)
+with model_request_budget(interval_seconds=0, max_requests=8, ledger_path=sys.argv[2]):
+    run_config(cfg, render=False, on_round=pause)
+'''
+    env = dict(os.environ, OPENROUTER_API_KEY='test-only-placeholder', SWARM_CANVAS_TRACING='local')
+    process = subprocess.Popen([sys.executable, '-c', code, str(output), str(ledger), str(marker)],
+                               cwd=ROOT, env=env, start_new_session=True,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        deadline = time.monotonic() + 45
+        while not marker.exists() and process.poll() is None and time.monotonic() < deadline:
+            time.sleep(.1)
+        assert marker.exists(), 'LLM run did not reach a boundary'
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait(timeout=10)
+        assert inspect_ledger(ledger)['attempts_reserved'] == 4
+        path = output / marker.read_text()
+        cfg = load_config(ROOT / 'configs/open_boat_dev.yaml')
+        cfg.update(rounds=2, output_dir=str(output))
+        cfg['model']['name'] = 'test/model:free'
+        monkeypatch.setenv('OPENROUTER_API_KEY', 'test-only-placeholder')
+        monkeypatch.setenv('SWARM_CANVAS_TRACING', 'local')
+        def reply(request):
+            return httpx.Response(200, json={'id': 'test', 'model': 'test/model:free',
+                'choices': [{'message': {'content': '{"messages":["hello"],"paints":[]}'}, 'finish_reason': 'stop'}],
+                'usage': {'prompt_tokens': 3, 'completion_tokens': 2, 'cost': 0}})
+        monkeypatch.setattr(models, '_client', lambda cfg: httpx.Client(
+            transport=httpx.MockTransport(reply), event_hooks={'request': [models.before_request], 'response': [models.after_response]}))
+        with pytest.raises(ValueError, match='budget ledger'):
+            resume_llm_run(cfg, path)
+        import shutil
+        changed_ledger = tmp_path / 'changed.sqlite3'
+        shutil.copyfile(ledger, changed_ledger)
+        with model_request_budget(interval_seconds=0, max_requests=8, ledger_path=changed_ledger, resume=True) as changed:
+            changed.acquire()
+            with pytest.raises(ValueError, match='boundary attempt count'):
+                resume_llm_run(cfg, path)
+        other_ledger = tmp_path / 'other.sqlite3'
+        with model_request_budget(interval_seconds=0, max_requests=8, ledger_path=other_ledger) as other:
+            for _ in range(4):
+                other.acquire()
+            with pytest.raises(ValueError, match='budget ledger'):
+                resume_llm_run(cfg, path)
+        with model_request_budget(interval_seconds=0, max_requests=8, ledger_path=ledger, resume=True) as budget:
+            result = resume_llm_run(cfg, path)
+            assert budget.requests == 8
+        assert result.scores['token_totals']['calls'] == 8
+        assert result.scores['messages'] == 8
+        assert inspect_ledger(ledger)['responses_received'] == 8
+    finally:
+        try: os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError: pass
+        process.wait(timeout=10)

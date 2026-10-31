@@ -17,6 +17,9 @@ def save_boundary(run_dir, round_num, canvas, slots, supplier, rng, comms, event
         agent_rng = getattr(slot.agent, 'rng', None)
         if agent_rng is not None:
             item['random_state'] = agent_rng.getstate()
+        model_cfg = getattr(slot.agent, 'model_cfg', None)
+        if model_cfg is not None:
+            item['model_usage'] = dict(model_cfg.usage)
         agents.append(item)
     held = {agent: sorted(colors) for agent, colors in supplier.held.items()}
     pending = {str(round_id): groups for round_id, groups in supplier._arriving.items()}
@@ -32,7 +35,9 @@ def save_boundary(run_dir, round_num, canvas, slots, supplier, rng, comms, event
     frame = canvas.snapshot()
     offset = events.tell()
     event_hash = hashlib.sha256((Path(run_dir) / 'events.jsonl').read_bytes()[:offset]).hexdigest()
+    from swarm_canvas.request_budget import budget_checkpoint
     data = {'schema_version': 1, 'round': round_num, 'canvas': frame,
+            'budget': budget_checkpoint(),
             'events_offset': offset, 'events_sha256': event_hash, 'rng_state': rng.getstate(),
             'agents': agents, 'supplier': {'catalog': supplier.catalog,
               'swarm_budget': supplier.swarm_budget, 'granted_total': supplier.granted_total,

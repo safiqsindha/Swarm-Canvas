@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 import httpx
 
-from swarm_canvas.request_budget import before_request
+from swarm_canvas.request_budget import after_response, before_request
 from swarm_canvas.tracing import observation, broadcast_context, register_secret
 
 
@@ -186,9 +186,9 @@ def _client(cfg: ModelConfig) -> httpx.Client:
         return httpx.Client(
             transport=cfg.transport,
             timeout=60.0,
-            event_hooks={"request": [before_request]},
+            event_hooks={"request": [before_request], "response": [after_response]},
         )
-    return httpx.Client(timeout=60.0, event_hooks={"request": [before_request]})
+    return httpx.Client(timeout=60.0, event_hooks={"request": [before_request], "response": [after_response]})
 
 
 def _request(messages: list[dict], cfg: ModelConfig) -> tuple[str, dict]:

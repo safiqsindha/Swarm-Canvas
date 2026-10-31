@@ -12,7 +12,7 @@ import httpx
 from swarm_canvas.larger_pilot import MODEL, preflight, source_hashes
 from swarm_canvas.paths import ROOT
 from swarm_canvas.request_budget import model_request_budget
-from swarm_canvas.runner import load_config, run_config
+from swarm_canvas.runner import load_config, run_config, resume_llm_run
 
 
 def run_batch(seeds=(11,), rounds=4, output_root=None):
@@ -42,7 +42,7 @@ def run_batch(seeds=(11,), rounds=4, output_root=None):
         tmp.write_text(json.dumps(plan, indent=2) + '\n')
         os.replace(tmp, manifest)
     save()
-    with model_request_budget(interval_seconds=3.5, max_requests=cap) as budget:
+    with model_request_budget(interval_seconds=3.5, max_requests=cap, ledger_path=root / "budget.sqlite3") as budget:
         try:
             for seed in seeds:
                 actual = source_hashes()
@@ -72,9 +72,51 @@ def run_open_boat(output_root: Path | None = None):
     return run_batch(output_root=output_root)
 
 
+def resume_batch(batch_dir):
+    """Continue a single-seed batch only from its last clean LLM round boundary."""
+    import hashlib
+    root = Path(batch_dir).resolve()
+    manifest = root / 'batch.json'
+    plan = json.loads(manifest.read_text())
+    if plan.get('status') != 'running' or len(plan.get('seeds', [])) != 1 or plan.get('runs'):
+        raise ValueError('only a running single-seed batch is resumable')
+    source = source_hashes()
+    source['configs/open_boat_dev.yaml'] = hashlib.sha256((ROOT / 'configs/open_boat_dev.yaml').read_bytes()).hexdigest()
+    if source != plan.get('source_sha256'):
+        raise ValueError('source files changed since batch creation')
+    cfg = load_config(ROOT / 'configs/open_boat_dev.yaml')
+    if cfg['model']['name'] != MODEL or cfg['model']['provider'] != 'openrouter':
+        raise ValueError('resume requires the pinned free OpenRouter model')
+    cfg.update(seed=plan['seeds'][0], rounds=plan['rounds'], output_dir=str(root))
+    paths = [p.parent for p in root.glob('*/config.json')]
+    if len(paths) != 1:
+        raise ValueError('batch must contain exactly one interrupted run')
+    cap, interval = plan['max_http_attempts'], plan['interval_seconds']
+    with model_request_budget(interval_seconds=interval, max_requests=cap,
+                              ledger_path=root / 'budget.sqlite3', resume=True) as budget:
+        with httpx.Client(timeout=20) as client:
+            preflight(client, os.environ.get('OPENROUTER_API_KEY'), cap - budget.requests)
+        try:
+            result = resume_llm_run(cfg, paths[0], on_round=lambda p: print(
+                json.dumps({'stage': 'round', **p}), flush=True))
+            scores = result.scores
+            if (not scores.get('model_metadata_complete') or scores.get('cost_usd') != 0
+                    or scores.get('observed_models') != [MODEL] or not scores.get('reliability_ok')):
+                raise RuntimeError('pinned free model, cost, or reliability not verified')
+            plan['runs'].append({'seed': plan['seeds'][0], 'run_dir': str(result.run_dir), 'scores': scores})
+            plan['status'] = 'completed'
+        finally:
+            plan['http_attempts'] = budget.requests
+            tmp = root / 'batch.json.tmp'
+            tmp.write_text(json.dumps(plan, indent=2) + '\n')
+            os.replace(tmp, manifest)
+    return manifest
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--seeds', type=int, nargs='+', default=[11])
     parser.add_argument('--rounds', type=int, default=4)
+    parser.add_argument('--resume-batch', type=Path, help='resume a single-seed batch at a clean boundary')
     args = parser.parse_args()
-    print(run_batch(tuple(args.seeds), args.rounds), flush=True)
+    print(resume_batch(args.resume_batch) if args.resume_batch else run_batch(tuple(args.seeds), args.rounds), flush=True)
