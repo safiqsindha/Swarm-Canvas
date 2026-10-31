@@ -128,12 +128,26 @@ def resume_random_run(cfg: dict, run_dir: str | Path, *, on_round=None) -> RunRe
         return _resume_random_run_locked(cfg, run_dir, on_round=on_round)
 
 
-def _resume_random_run_locked(cfg, run_dir, *, on_round=None):
+def resume_llm_run(cfg: dict, run_dir: str | Path, *, on_round=None) -> RunResult:
+    """Resume a built-in OpenRouter agent run at a clean, budget-matched boundary.
+
+    The caller must first reopen the original durable model_request_budget.
+    Any request after the checkpoint makes automatic continuation unsafe.
+    """
+    run_dir = Path(run_dir).resolve()
+    with _run_lock(run_dir):
+        return _resume_random_run_locked(cfg, run_dir, on_round=on_round, llm=True)
+
+
+def _resume_random_run_locked(cfg, run_dir, *, on_round=None, llm=False):
     _validate_config(cfg, None)
     config = json.loads((run_dir / 'config.json').read_text())
-    if (config.get('status') != 'running' or not config.get('resume_builtin_random')
-            or cfg['agents'].get('type', 'random') != 'random'):
-        raise ValueError('only interrupted built-in random-agent runs can be resumed')
+    expected = 'llm' if llm else 'random'
+    if (config.get('status') != 'running' or not config.get('resume_builtin_' + expected)
+            or cfg['agents'].get('type', 'random') != expected):
+        raise ValueError('only interrupted built-in ' + expected + '-agent runs can be resumed')
+    if llm and cfg.get('model', {}).get('provider') != 'openrouter':
+        raise ValueError('LLM continuation requires free OpenRouter models')
     if cfg.get('comms', {}).get('kind') != 'swarmchat' or cfg['comms'].get('backend', 'local') != 'local' or cfg['comms'].get('server_url'):
         raise ValueError('resume requires the original local native SwarmChat')
     if cfg.get('task', {}).get('mode', 'free_creation') != 'free_creation' or any(config.get('assistance', {}).get(k) for k in ('reference_image', 'assigned_territories', 'suggested_paints', 'require_messages', 'require_peer_acks')):
@@ -146,12 +160,17 @@ def _resume_random_run_locked(cfg, run_dir, *, on_round=None):
     if recovery['round'] >= int(cfg['rounds']):
         raise ValueError('no remaining round to resume')
     state = json.loads((run_dir / config['boundary_state']).read_text())
+    if llm:
+        from swarm_canvas.request_budget import budget_checkpoint
+        saved_budget = state.get('budget')
+        if not saved_budget or budget_checkpoint() != saved_budget:
+            raise ValueError('original budget ledger or boundary attempt count does not match')
     if (run_dir / 'events.jsonl').stat().st_size != state['events_offset']:
         raise ValueError('partial-round events exist; automatic continuation refused')
     trace = run_dir / 'traces.jsonl'
     for line in trace.read_text().splitlines():
         event = json.loads(line)
-        if event.get('name') == 'generate-painter-action':
+        if not llm and event.get('name') == 'generate-painter-action':
             raise ValueError('model-call traces found in a random-agent run')
     with ExitStack() as resources:
         comms_cfg = cfg['comms']
@@ -400,6 +419,7 @@ def _run_config(
                     "resume_source_sha256": _resume_source_hash(),
                     "resume_python_version": list(sys.version_info[:3]),
                     "resume_builtin_random": agents is None and cfg["agents"].get("type", "random") == "random",
+                    "resume_builtin_llm": agents is None and cfg["agents"].get("type") == "llm" and model_cfg.provider == "openrouter",
                 },
                 indent=2,
             )
@@ -417,11 +437,16 @@ def _run_config(
         def as_tuple(value):
             return tuple(as_tuple(x) for x in value) if isinstance(value, list) else value
         for slot, saved in zip(slots, recovery['agents'], strict=True):
-            if slot.agent_id != saved['agent_id'] or 'random_state' not in saved:
+            if slot.agent_id != saved['agent_id']:
                 raise ValueError('unsupported or inconsistent agent boundary state')
             slot.handle, slot.palette, slot.scratchpad = saved['handle'], list(saved['palette']), saved['scratchpad']
             slot.agent.handle, slot.agent.scratchpad = slot.handle, slot.scratchpad
-            slot.agent.rng.setstate(as_tuple(saved['random_state']))
+            if isinstance(slot.agent, RandomAgent) and 'random_state' in saved:
+                slot.agent.rng.setstate(as_tuple(saved['random_state']))
+            elif isinstance(slot.agent, LLMAgent) and 'model_usage' in saved:
+                slot.model_cfg.usage = dict(saved['model_usage'])
+            else:
+                raise ValueError('unsupported or inconsistent agent boundary state')
     events_path = run_dir / "events.jsonl"
     pngs: list[Path] = []
     for slot in slots:

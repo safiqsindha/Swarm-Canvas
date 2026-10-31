@@ -31,6 +31,41 @@ def test_http_cap_also_counts_schema_fallbacks():
     assert len(seen) == 1
 
 
+def test_open_boat_batch_reopens_existing_budget(tmp_path, monkeypatch):
+    import hashlib
+    from types import SimpleNamespace
+    from swarm_canvas import open_boat_check as module
+    from swarm_canvas.paths import ROOT
+    from swarm_canvas.request_budget import inspect_ledger
+
+    run_dir = tmp_path / 'open_boat_s11_test'
+    run_dir.mkdir()
+    (run_dir / 'config.json').write_text('{}')
+    source = module.source_hashes()
+    source['configs/open_boat_dev.yaml'] = hashlib.sha256((ROOT / 'configs/open_boat_dev.yaml').read_bytes()).hexdigest()
+    plan = {'status': 'running', 'seeds': [11], 'rounds': 2, 'runs': [],
+            'source_sha256': source, 'max_http_attempts': 8, 'interval_seconds': 0}
+    (tmp_path / 'batch.json').write_text(json.dumps(plan))
+    ledger = tmp_path / 'budget.sqlite3'
+    with model_request_budget(interval_seconds=0, max_requests=8, ledger_path=ledger) as budget:
+        budget.acquire()
+    seen = []
+    monkeypatch.setattr(module, 'preflight', lambda client, key, cap: seen.append(cap))
+    def fake_resume(cfg, path, **kwargs):
+        assert path == run_dir and cfg['seed'] == 11
+        client_cfg = ModelConfig(provider='openrouter', name='test/model:free',
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json={
+                'choices': [{'message': {'content': '{}'}}], 'usage': {'cost': 0}})))
+        call_model([{'role': 'user', 'content': 'test'}], client_cfg)
+        return SimpleNamespace(run_dir=run_dir, scores={'model_metadata_complete': True,
+            'cost_usd': 0, 'observed_models': [module.MODEL], 'reliability_ok': True})
+    monkeypatch.setattr(module, 'resume_llm_run', fake_resume)
+    assert module.resume_batch(tmp_path) == tmp_path / 'batch.json'
+    assert seen == [7]
+    assert json.loads((tmp_path / 'batch.json').read_text())['http_attempts'] == 2
+    assert inspect_ledger(ledger)['attempts_reserved'] == 2
+
+
 def test_budget_is_shared_between_painters_and_restored_after_failure():
     def respond(request):
         return httpx.Response(

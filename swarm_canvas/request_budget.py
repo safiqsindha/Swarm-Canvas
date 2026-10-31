@@ -9,6 +9,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
+from uuid import uuid4
 
 
 class RequestBudgetExceeded(RuntimeError):
@@ -49,12 +50,18 @@ class DurableLedger:
             if not resume:
                 self.db.executescript('''CREATE TABLE settings (cap INTEGER NOT NULL, interval REAL NOT NULL);
                     CREATE TABLE attempts (id INTEGER PRIMARY KEY, status TEXT NOT NULL, http_status INTEGER);
+                    CREATE TABLE identity (id TEXT NOT NULL);
                 ''')
                 self.db.execute('INSERT INTO settings VALUES (?, ?)', (max_requests, interval_seconds))
+                self.db.execute('INSERT INTO identity VALUES (?)', (uuid4().hex,))
                 self.db.commit()
             row = self.db.execute('SELECT cap, interval FROM settings').fetchall()
             if row != [(max_requests, float(interval_seconds))]:
                 raise BudgetLedgerError('budget settings do not match the original ledger')
+            identities = self.db.execute('SELECT id FROM identity').fetchall()
+            if len(identities) != 1 or len(identities[0][0]) != 32:
+                raise BudgetLedgerError('budget ledger identity is inconsistent')
+            self.identity = identities[0][0]
             bad = self.db.execute("SELECT COUNT(*) FROM attempts WHERE status NOT IN ('reserved', 'response_received')").fetchone()[0]
             if bad or self.count() > max_requests:
                 raise BudgetLedgerError('budget ledger contents are inconsistent')
@@ -116,6 +123,15 @@ class RequestBudget:
 
 _active_budget: RequestBudget | None = None
 _setup_lock = threading.Lock()
+
+
+def budget_checkpoint():
+    """Return the active durable budget identity and committed attempt count."""
+    budget = _active_budget
+    if budget is None or budget.ledger is None:
+        return None
+    with budget._lock:
+        return {'ledger_id': budget.ledger.identity, 'attempts': budget.ledger.count()}
 
 
 def before_request(request):
