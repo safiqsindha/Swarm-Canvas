@@ -43,6 +43,14 @@ run_config(cfg, render=False, on_round=pause)
         audit = inspect_attempt(path)
         assert audit['status'] == 'running'  # stale status must not imply process is alive
         assert audit['last_completed_round'] == 1 and audit['checkpoint_valid']
+        assert audit['boundary_valid']
+        cfg = json.loads((path / 'config.json').read_text())
+        boundary = json.loads((path / cfg['boundary_state']).read_text())
+        assert len(boundary['agents']) == 4 and boundary['round'] == 1
+        assert boundary['swarmchat']['metadata']['transport'] == 'native_local'
+        assert 'token' not in (path / cfg['boundary_state']).read_text().lower()
+        (path / cfg['boundary_state']).write_text('{}')
+        assert inspect_attempt(path)['boundary_valid'] is False
         assert len(list((path / 'canvas').glob('round_*.json'))) == 1
         assert json.loads((path / 'config.json').read_text())['run'] == path.name
     finally:

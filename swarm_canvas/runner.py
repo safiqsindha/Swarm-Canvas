@@ -20,6 +20,7 @@ from uuid import uuid4
 import yaml
 
 from swarm_canvas.agents import LLMAgent, RandomAgent
+from swarm_canvas.boundary_state import save_boundary
 from swarm_canvas.assistance import configure as configure_assistance, instructions as assistance_instructions
 from swarm_canvas.comms import DocLog, NoComms, SwarmChatComms
 from swarm_canvas.engine import Canvas
@@ -414,6 +415,8 @@ def _run_config(
                 checkpoint['last_completed_round'] = round_num
                 checkpoint['checkpoint_frame'] = str(frame.relative_to(run_dir))
                 checkpoint['checkpoint_sha256'] = hashlib.sha256(frame.read_bytes()).hexdigest()
+                checkpoint['boundary_state'], checkpoint['boundary_sha256'] = save_boundary(
+                    run_dir, round_num, canvas, slots, supplier, rng, comms, events)
                 temporary = run_dir / 'config.json.tmp'
                 temporary.write_text(json.dumps(checkpoint, indent=2) + '\n')
                 os.replace(temporary, run_dir / 'config.json')

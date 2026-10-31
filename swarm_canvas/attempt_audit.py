@@ -12,12 +12,15 @@ def inspect_attempt(path):
     config = json.loads((path / 'config.json').read_text())
     result = {'status': config.get('status'), 'last_completed_round': config.get('last_completed_round'),
               'checkpoint_valid': None, 'generation_starts_upper_bound': None,
-              'incomplete_generation_spans': None}
+              'incomplete_generation_spans': None, 'boundary_valid': None}
     if config.get('checkpoint_frame'):
         frame = (path / config['checkpoint_frame']).resolve()
         if frame.parent != path / 'canvas':
             raise ValueError('checkpoint frame outside canvas directory')
         result['checkpoint_valid'] = frame.is_file() and hashlib.sha256(frame.read_bytes()).hexdigest() == config.get('checkpoint_sha256')
+    if config.get('boundary_state'):
+        from swarm_canvas.boundary_state import validate_boundary
+        result['boundary_valid'] = validate_boundary(path, config)
     trace_path = path / 'traces.jsonl'
     if trace_path.exists():
         started, ended = set(), set()
