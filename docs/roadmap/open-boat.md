@@ -18,3 +18,5 @@ Do not score against the reconstruction target or silently treat cell coverage a
 ## First development check
 
 Run a small, bounded single-condition smoke test before drawing conclusions; use the real SwarmChat transport and pinned free model. Record whether each agent completes turns, whether they use messages voluntarily, what emerges visually, and all failure and cost metadata. No intervention or forced messages may be added after observing an output. A single run is not a performance estimate. Review the resulting image and traces, then decide what to fix before a seeded comparison. Retain prompt, model, exact config, source fingerprint and evidence. A fresh readiness verification is required for the earlier assisted pilot launcher whenever its frozen source files change.
+
+To run the bounded smoke configuration with an OpenRouter key supplied securely in the environment: `python -m swarm_canvas.open_boat_check`. It checks catalog price and quota for the pinned model, paces requests, caps attempts at 32, and checks the observed model and reported cost. Failed runs retain their run directory and failure manifest.
