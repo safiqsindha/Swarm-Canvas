@@ -35,15 +35,15 @@ class Observation:
 
 
 class Recorder:
-    def __init__(self, path: Path, run_id: str, mode: str, client=None):
+    def __init__(self, path: Path, run_id: str, mode: str, client=None, resume=False):
         self.run_id, self.mode, self.client = run_id, mode, client
-        self.trace_id = uuid4().hex
+        self.trace_id = json.loads(path.read_text().splitlines()[0])['trace_id'] if resume else uuid4().hex
         self.lock = threading.RLock()
         self.secrets = set()
         for key, value in os.environ.items():
             if re.search(r"KEY|TOKEN|SECRET|PASSWORD", key) and len(value) >= 8:
                 self.secrets.add(value)
-        self.file = path.open("x", encoding="utf-8")
+        self.file = path.open("a" if resume else "x", encoding="utf-8")
         self.export_errors = 0
 
     def mask(self, value):
@@ -102,7 +102,7 @@ class Recorder:
 
 
 @contextmanager
-def trace_run(run_dir, metadata):
+def trace_run(run_dir, metadata, *, resume=False):
     """Auto uses SDK with complete credentials; otherwise existing account Broadcast."""
     mode = os.getenv("SWARM_CANVAS_TRACING", "auto").lower()
     if mode not in {"auto", "local", "broadcast", "langfuse"}:
@@ -120,7 +120,7 @@ def trace_run(run_dir, metadata):
         from langfuse import Langfuse, propagate_attributes
         client = Langfuse(base_url=host, environment="development", sample_rate=1.0)
         attributes = propagate_attributes(session_id=run_dir.name, tags=["swarm-canvas", "free-only", str(metadata["condition"])])
-    recorder = Recorder(run_dir / "traces.jsonl", run_dir.name, mode, client)
+    recorder = Recorder(run_dir / "traces.jsonl", run_dir.name, mode, client, resume=resume)
     token = _current.set(recorder)
     try:
         with attributes, recorder.observation("run-canvas", input={k: metadata[k] for k in ("condition", "seed", "rounds")}, metadata=metadata) as root:
