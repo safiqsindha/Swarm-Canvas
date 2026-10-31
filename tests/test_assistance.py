@@ -93,3 +93,32 @@ def test_peer_ack_requirement_reports_invalid_ack_without_changing_action(tmp_pa
     violations = [e for e in events if e['type'] == 'assistance_violation' and e['reason'] == 'required_peer_ack_missing']
     assert len(violations) == 4 and all(e['round'] == 2 for e in violations)
     assert not any(e['type'] == 'ack' and e.get('applied') for e in events)
+
+
+def test_audit_conservatively_counts_truncated_tail_and_rejects_midfile_corruption(tmp_path):
+    (tmp_path / 'config.json').write_text(json.dumps({'status': 'running'}))
+    start = json.dumps({'name': 'generate-painter-action', 'event': 'start', 'id': '1'})
+    (tmp_path / 'traces.jsonl').write_text(start + '\n' + '{"name":')
+    audit = inspect_attempt(tmp_path)
+    assert audit['generation_starts_upper_bound'] == 2
+    assert audit['truncated_trace_tail'] and audit['incomplete_generation_spans'] == 1
+    (tmp_path / 'traces.jsonl').write_text('not-json\n' + start + '\n')
+    with pytest.raises(ValueError, match='corruption'):
+        inspect_attempt(tmp_path)
+
+
+def test_batch_recovery_counts_each_attempt_and_never_assumes_resume(tmp_path):
+    from swarm_canvas.attempt_audit import plan_batch_recovery
+    (tmp_path / 'batch.json').write_text(json.dumps({'status': 'running', 'seeds': [1, 2],
+        'max_http_attempts': 10, 'runs': []}))
+    for seed in (1, 2):
+        d = tmp_path / f'open_boat_s{seed}_test'; d.mkdir()
+        (d / 'config.json').write_text(json.dumps({'status': 'running', 'seed': seed}))
+        (d / 'traces.jsonl').write_text(json.dumps({'name': 'generate-painter-action', 'event': 'start', 'id': f'id{seed}'}) + '\n')
+    result = plan_batch_recovery(tmp_path)
+    assert result['completed_seeds'] == [] and result['restart_seeds_from_round_one'] == [1, 2]
+    assert result['attempts_upper_bound'] == 2 and result['remaining_attempts_lower_bound'] == 8
+    assert result['original_process_stopped'] == 'unverified'
+    (tmp_path / 'open_boat_s2_test/traces.jsonl').unlink()
+    with pytest.raises(ValueError, match='without every trace'):
+        plan_batch_recovery(tmp_path)
