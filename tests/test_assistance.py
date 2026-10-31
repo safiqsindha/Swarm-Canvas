@@ -122,3 +122,55 @@ def test_batch_recovery_counts_each_attempt_and_never_assumes_resume(tmp_path):
     (tmp_path / 'open_boat_s2_test/traces.jsonl').unlink()
     with pytest.raises(ValueError, match='without every trace'):
         plan_batch_recovery(tmp_path)
+
+
+def test_boundary_captures_supplier_pending_agent_state_and_rng(tmp_path):
+    cfg = _cfg(output_dir=str(tmp_path), rounds=2)
+    agents = [Scripted([{'name': 'Captain', 'scratchpad': 'paint the sail',
+                         'requests': ['O'], 'paints': [{'cell': 'A1', 'color': 'S'}]}])]
+    agents += [Scripted([{}]) for _ in range(3)]
+    def abort(_):
+        raise RuntimeError('stop at boundary')
+    with pytest.raises(RuntimeError, match='stop at boundary'):
+        run_config(cfg, agents=agents, render=False, on_round=abort)
+    path = next(tmp_path.iterdir())
+    config = json.loads((path / 'config.json').read_text())
+    boundary = json.loads((path / config['boundary_state']).read_text())
+    assert inspect_attempt(path)['boundary_valid']
+    assert boundary['agents'][0]['handle'] == 'Captain'
+    assert boundary['agents'][0]['scratchpad'] == 'paint the sail'
+    assert boundary['supplier']['held']['slot-0'] == ['O']
+    assert boundary['supplier']['arriving']['2']['slot-0'] == ['O']
+    assert boundary['supplier']['granted_total'] == 1
+    assert boundary['rng_state'] and boundary['events_offset'] > 0
+    assert boundary['continuation_supported'] is False
+    events = path / 'events.jsonl'
+    events.write_text(events.read_text().replace('Captain', 'Pirates'))
+    assert not inspect_attempt(path)['boundary_valid']
+
+
+def test_verified_core_restore_preserves_random_and_supplier_state(tmp_path):
+    import random
+    from swarm_canvas.boundary_state import restore_core
+    cfg = _cfg(output_dir=str(tmp_path), rounds=2)
+    agents = [Scripted([{'name': 'Captain', 'scratchpad': 'sail', 'requests': ['O'],
+                         'paints': [{'cell': 'A1', 'color': 'S'}]}])] + [Scripted([{}]) for _ in range(3)]
+    with pytest.raises(RuntimeError):
+        run_config(cfg, agents=agents, render=False,
+                   on_round=lambda _: (_ for _ in ()).throw(RuntimeError('interrupt')))
+    path = next(tmp_path.iterdir())
+    config = json.loads((path / 'config.json').read_text())
+    state = json.loads((path / config['boundary_state']).read_text())
+    restored = restore_core(path)
+    assert restored['canvas'].snapshot() == state['canvas']
+    assert restored['agents'][0]['handle'] == 'Captain'
+    assert restored['agents'][0]['scratchpad'] == 'sail'
+    assert restored['supplier'].deliveries(2) == {'slot-0': ['O']}
+    expected = random.Random()
+    def tup(x): return tuple(tup(i) for i in x) if isinstance(x, list) else x
+    expected.setstate(tup(state['rng_state']))
+    assert [restored['rng'].random() for _ in range(10)] == [expected.random() for _ in range(10)]
+    assert restored['continuation_supported'] is False
+    (path / config['boundary_state']).write_text('{}')
+    with pytest.raises(ValueError, match='integrity'):
+        restore_core(path)
