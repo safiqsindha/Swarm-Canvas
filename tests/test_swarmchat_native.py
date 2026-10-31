@@ -141,3 +141,43 @@ def test_scripted_check_validates_native_receipts_with_no_models(tmp_path):
     result = check_swarmchat(output_root=tmp_path)
     assert result["status"] == "passed" and result["model_calls"] == 0
     assert result["messages"] == result["receipt_checks"] == 4
+
+
+def test_local_recovery_preserves_channel_messages_and_read_positions(tmp_path):
+    data = tmp_path / 'native'
+    first = SwarmChatComms(agent_ids=['slot-0', 'slot-1'], data_dir=data)
+    message = first.post('slot-0', 'hello peer', 1)
+    shown = first.inbox('slot-1', 2)
+    assert shown[0].number == message
+    saved = first.checkpoint_state()
+    assert 'token' not in str(saved).lower()
+    first.close()
+    second = SwarmChatComms(agent_ids=['slot-0', 'slot-1'], data_dir=data,
+                            recovery_state=saved)
+    try:
+        assert second.channel_id == saved['metadata']['channel_id']
+        assert second.inbox('slot-1', 3)[0].text == 'hello peer'
+        assert second.inbox('slot-0', 3)[0].read_by == ['slot-1']
+        assert second.post('slot-1', 'reply', 3) > message
+    finally:
+        second.close()
+
+
+def test_recovery_refuses_changed_channel_or_unsafe_token_file(tmp_path):
+    data = tmp_path / 'native'
+    first = SwarmChatComms(agent_ids=['slot-0', 'slot-1'], data_dir=data)
+    first.post('slot-0', 'before', 1)
+    saved = first.checkpoint_state()
+    first.post('slot-1', 'after boundary', 2)
+    first.close()
+    with pytest.raises(SwarmChatError, match='differs from the saved boundary'):
+        SwarmChatComms(agent_ids=['slot-0', 'slot-1'], data_dir=data, recovery_state=saved)
+    (data / 'recovery_tokens.json').chmod(0o644)
+    with pytest.raises(SwarmChatError, match='unsafe permissions'):
+        SwarmChatComms(agent_ids=['slot-0', 'slot-1'], data_dir=data, recovery_state=saved)
+
+
+def test_remote_recovery_is_refused_before_network():
+    with pytest.raises(ValueError, match='only a local'):
+        SwarmChatComms(agent_ids=['slot-0'], server_url='https://example.invalid',
+                       recovery_state={})
