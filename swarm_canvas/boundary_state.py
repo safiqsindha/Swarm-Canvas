@@ -21,7 +21,9 @@ def save_boundary(run_dir, round_num, canvas, slots, supplier, rng, comms, event
     held = {agent: sorted(colors) for agent, colors in supplier.held.items()}
     pending = {str(round_id): groups for round_id, groups in supplier._arriving.items()}
     chat = {'transport': 'none'}
-    if hasattr(comms, 'metadata'):
+    if getattr(comms, 'local', False) and hasattr(comms, 'checkpoint_state'):
+        chat = comms.checkpoint_state()
+    elif hasattr(comms, 'metadata'):
         chat = {'metadata': comms.metadata(),
                 'watermarks': dict(getattr(comms, '_watermark', {})),
                 'message_rounds': dict(getattr(comms, '_rounds', {})),

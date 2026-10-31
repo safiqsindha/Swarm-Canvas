@@ -5,6 +5,9 @@ The run log is an audit copy. Inboxes always come from the actual server.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
 import threading
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -36,9 +39,12 @@ class SwarmChatComms:
         max_chars: int = 200,
         inbox_context_lines: int = 20,
         path: Path | None = None,
+        recovery_state: dict | None = None,
     ):
         if not agent_ids or len(set(agent_ids)) != len(agent_ids):
             raise ValueError("SwarmChat needs unique permanent agent IDs")
+        if recovery_state is not None and server_url:
+            raise ValueError("Recovery currently supports only a local SwarmChat server")
         self.agent_ids = list(agent_ids)
         self.messages_per_round = messages_per_round
         self.max_chars = max_chars
@@ -66,7 +72,7 @@ class SwarmChatComms:
                     raise ValueError(
                         "Local SwarmChat requires an isolated data directory"
                     )
-                self.server_url, tokens = self._start_local(data_dir)
+                self.server_url, tokens = self._start_local(data_dir, recovering=recovery_state is not None)
             else:
                 parsed = urlsplit(server_url)
                 if (
@@ -106,15 +112,18 @@ class SwarmChatComms:
                     )
                 self._users[agent] = user
             self._agents = {user: agent for agent, user in self._users.items()}
-            creator = self.agent_ids[0]
-            channel = self._call(
-                creator,
-                "channel_create",
-                name=channel_name or f"canvas-{uuid4().hex}",
-                members=list(self._users.values()),
-                public=False,
-            )["chat"]
-            self.channel_id, self.channel_name = channel["id"], channel["name"]
+            if recovery_state is not None:
+                if not self.local:
+                    raise ValueError("Recovery currently supports only a local SwarmChat server")
+                self.channel_id = recovery_state['metadata']['channel_id']
+                self.channel_name = recovery_state['metadata']['channel_name']
+            else:
+                creator = self.agent_ids[0]
+                channel = self._call(
+                    creator, "channel_create", name=channel_name or f"canvas-{uuid4().hex}",
+                    members=list(self._users.values()), public=False,
+                )["chat"]
+                self.channel_id, self.channel_name = channel["id"], channel["name"]
             for agent in self.agent_ids:
                 info = self._call(agent, "chat_info", chat=self.channel_id)["chat"]
                 if info["public"] or {m["id"] for m in info["members"]} != set(
@@ -123,12 +132,17 @@ class SwarmChatComms:
                     raise SwarmChatError(
                         "The run channel must be private and contain only its painters"
                     )
+            if recovery_state is not None:
+                self._restore_checkpoint(recovery_state)
         except BaseException:
             self.close()
             raise
 
-    def _start_local(self, data_dir: Path) -> tuple[str, dict[str, str]]:
+    def _start_local(self, data_dir: Path, recovering: bool = False) -> tuple[str, dict[str, str]]:
         data_dir = Path(data_dir)
+        token_path = data_dir / 'recovery_tokens.json'
+        if recovering and (not token_path.is_file() or token_path.stat().st_mode & 0o077):
+            raise SwarmChatError('Private local recovery credentials are missing or have unsafe permissions')
         self._server, self._store = make_server(
             load(data=str(data_dir), host="127.0.0.1", port=0, max_connections=64)
         )
@@ -145,6 +159,9 @@ class SwarmChatComms:
             daemon=True,
         )
         self._saver.start()
+        if recovering:
+            tokens = json.loads(token_path.read_text())
+            return self._server.url, tokens
         admin = Client(self._server.url, (data_dir / "admin.token").read_text().strip())
         try:
             tokens = {
@@ -153,6 +170,11 @@ class SwarmChatComms:
             }
         finally:
             admin.close()
+        fd = os.open(token_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(fd, 'w', encoding='utf-8') as handle:
+            json.dump(tokens, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
         return self._server.url, tokens
 
     def _call(self, agent: str, method: str, **kwargs) -> dict:
@@ -280,6 +302,36 @@ class SwarmChatComms:
         if not result or result.get("ok") is not True:
             raise SwarmChatError("The server did not confirm the native acknowledgment")
         return line
+
+    def _recovery_digest(self):
+        views = {agent: self._call(agent, 'read', chat=self.channel_id,
+                                  **{'all': True}, peek=True, limit=1_000_000)['messages']
+                 for agent in self.agent_ids}
+        with self._store.lock:
+            positions = {agent: self._store.state[self._users[agent]]['read'].get(self.channel_id, 0)
+                         for agent in self.agent_ids}
+        payload = {'views': views, 'positions': positions}
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+    def checkpoint_state(self):
+        """Flush native read state and capture a non-secret comparison fingerprint."""
+        if not self.local or self._store is None:
+            raise SwarmChatError('Only local native SwarmChat supports session recovery')
+        self._store.flush()
+        return {'metadata': self.metadata(), 'digest': self._recovery_digest(),
+                'watermarks': dict(self._watermark), 'message_rounds': dict(self._rounds),
+                'counts': [{'agent_id': a, 'round': r, 'count': n}
+                           for (a, r), n in self._counts.items()]}
+
+    def _restore_checkpoint(self, state):
+        if state.get('metadata', {}).get('users') != self._users:
+            raise SwarmChatError('SwarmChat participant identities changed')
+        if self._recovery_digest() != state.get('digest'):
+            raise SwarmChatError('SwarmChat state differs from the saved boundary')
+        self._watermark = dict(state['watermarks'])
+        self._rounds = dict(state['message_rounds'])
+        self._counts = {(item['agent_id'], item['round']): item['count'] for item in state['counts']}
+        self._active_round = None
 
     def metadata(self) -> dict:
         return {
