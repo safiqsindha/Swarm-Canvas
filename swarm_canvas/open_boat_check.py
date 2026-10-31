@@ -42,7 +42,7 @@ def run_batch(seeds=(11,), rounds=4, output_root=None):
         tmp.write_text(json.dumps(plan, indent=2) + '\n')
         os.replace(tmp, manifest)
     save()
-    with model_request_budget(interval_seconds=3.5, max_requests=cap) as budget:
+    with model_request_budget(interval_seconds=3.5, max_requests=cap, ledger_path=root / "budget.sqlite3") as budget:
         try:
             for seed in seeds:
                 actual = source_hashes()

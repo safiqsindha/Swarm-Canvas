@@ -170,3 +170,10 @@ def record_event(event):
     kind = "tool" if event.get("type") in {"message", "ack", "paint", "request", "grant"} else "span"
     with observation("apply-" + str(event.get("type", "event")), kind, input=event, metadata={k: event[k] for k in ("round", "agent_id") if k in event}) as obs:
         obs.update(output=event)
+
+
+def record_budget_attempt(attempt_id, phase, status=None):
+    recorder = _current.get()
+    if recorder is not None and attempt_id is not None:
+        recorder.write({'event': 'budget_' + phase, 'observation_id': _parent.get(),
+                        'attempt_id': attempt_id, **({'http_status': status} if status is not None else {})})

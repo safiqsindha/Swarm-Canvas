@@ -102,7 +102,7 @@ def launch(output_root=None):
     def save():
         path.write_text(json.dumps(plan, indent=2) + '\n')
     save()
-    with model_request_budget(interval_seconds=3.5, max_requests=CAP) as budget:
+    with model_request_budget(interval_seconds=3.5, max_requests=CAP, ledger_path=root / "budget.sqlite3") as budget:
         try:
             for seed in SEEDS:
                 if source_hashes() != source:
