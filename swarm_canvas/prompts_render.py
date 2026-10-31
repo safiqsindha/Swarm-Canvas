@@ -54,10 +54,12 @@ def render_system(
     paint_budget: int = 8,
     task_mode: str = "free_creation",
     agent_id: str = "painter",
+    goal: str | None = None,
+    open_coordination: bool = False,
 ) -> str:
     rules = read_prompt(comms_rules_file(condition, kind))
     return fill(
-        read_prompt("system.txt"),
+        read_prompt("system_open_coordination.txt" if open_coordination else "system.txt"),
         {
             "handle": handle,
             "agent_id": agent_id,
@@ -67,7 +69,7 @@ def render_system(
             if agent_count == 1
             else f"one of {agent_count} painters sharing this grid",
             "paint_budget": paint_budget,
-            "objective": read_prompt(f"objective_{task_mode}.txt"),
+            "objective": ("Your shared goal: " + goal) if goal is not None else read_prompt(f"objective_{task_mode}.txt"),
         },
     )
 

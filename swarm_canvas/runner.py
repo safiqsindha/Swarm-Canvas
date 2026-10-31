@@ -188,6 +188,11 @@ def _task(cfg: dict) -> tuple[dict, list[str] | None]:
     if mode not in {"reconstruction", "free_creation"}:
         raise ValueError("task.mode must be reconstruction or free_creation")
     if mode == "free_creation":
+        goal = task.get("goal")
+        if goal is not None and (not isinstance(goal, str) or not goal.strip() or len(goal) > 500):
+            raise ValueError("free creation goal must be a nonempty string of at most 500 characters")
+        if not isinstance(task.get("open_coordination", False), bool):
+            raise ValueError("open_coordination must be a boolean")
         return task, None
     path = Path(task.get("target", "targets/sun_boat.txt"))
     if not path.is_absolute():
@@ -300,6 +305,8 @@ def _run_config(
                 paint_budget=budget,
                 task_mode=task.get("mode", "free_creation"),
                 agent_id=slot.agent_id,
+                goal=task.get("goal"),
+                open_coordination=task.get("open_coordination", False),
             )
     _write_system_prompts(
         prompt_dir,
@@ -309,6 +316,8 @@ def _run_config(
         kind,
         budget,
         task.get("mode", "free_creation"),
+        task.get("goal"),
+        task.get("open_coordination", False),
     )
     call_offsets = {slot.index: 0 for slot in slots}
     with events_path.open("w", encoding="utf-8") as events:
@@ -426,6 +435,7 @@ def _run_config(
             "max_tokens": model_cfg.max_tokens,
             "reasoning_max_tokens": model_cfg.reasoning_max_tokens,
             "reasoning_enabled": model_cfg.reasoning_enabled,
+            "output_kind": model_cfg.output_kind,
             "require_coordination_fields": model_cfg.require_coordination_fields,
             "paint_budget": budget,
             "policy": "openrouter_free_only",
@@ -518,6 +528,7 @@ def _model_config(model: dict) -> ModelConfig:
         reasoning_max_tokens=model.get("reasoning_max_tokens"),
         reasoning_enabled=model.get("reasoning_enabled"),
         require_coordination_fields=model.get("require_coordination_fields", False),
+        output_kind=model.get("output_kind", "painter"),
         fake_responses=list(responses) if responses else None,
     )
 
@@ -575,6 +586,8 @@ def _write_system_prompts(
     kind: str,
     budget: int,
     task_mode: str,
+    goal: str | None = None,
+    open_coordination: bool = False,
 ) -> None:
     palette_text = " ".join(base_palette)
     for slot in slots:
@@ -587,6 +600,8 @@ def _write_system_prompts(
             paint_budget=budget,
             task_mode=task_mode,
             agent_id=slot.agent_id,
+            goal=goal,
+            open_coordination=open_coordination,
         )
         (prompt_dir / f"system_slot-{slot.index}.txt").write_text(
             text + "\n", encoding="utf-8"
@@ -967,6 +982,7 @@ def _public_model(cfg: ModelConfig) -> dict:
         "max_tokens": cfg.max_tokens,
         "reasoning_max_tokens": cfg.reasoning_max_tokens,
         "reasoning_enabled": cfg.reasoning_enabled,
+        "output_kind": cfg.output_kind,
         "paint_budget": cfg.paint_budget,
         "require_coordination_fields": cfg.require_coordination_fields,
     }
