@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import random
 import re
 import subprocess
@@ -19,6 +20,7 @@ from uuid import uuid4
 import yaml
 
 from swarm_canvas.agents import LLMAgent, RandomAgent
+from swarm_canvas.assistance import configure as configure_assistance, instructions as assistance_instructions
 from swarm_canvas.comms import DocLog, NoComms, SwarmChatComms
 from swarm_canvas.engine import Canvas
 from swarm_canvas.models import ModelConfig, validate_model_policy
@@ -180,6 +182,9 @@ def _validate_config(cfg: dict, agents: list | None) -> None:
                         "Remote SwarmChat requires real tokens for every slot"
                     )
     _task(cfg)  # validate objective before allocating or calling models
+    assistance, _ = configure_assistance(cfg)
+    if assistance['assigned_territories'] and len(handles) > 24:
+        raise ValueError('assigned territories require at most one agent per column')
 
 
 def _task(cfg: dict) -> tuple[dict, list[str] | None]:
@@ -188,6 +193,7 @@ def _task(cfg: dict) -> tuple[dict, list[str] | None]:
     if mode not in {"reconstruction", "free_creation"}:
         raise ValueError("task.mode must be reconstruction or free_creation")
     if mode == "free_creation":
+        task['mode'] = mode
         goal = task.get("goal")
         if goal is not None and (not isinstance(goal, str) or not goal.strip() or len(goal) > 500):
             raise ValueError("free creation goal must be a nonempty string of at most 500 characters")
@@ -226,6 +232,11 @@ def _run_config(
     condition = str(cfg["condition"])
     run_id = run_dir.name
     task, plate = _task(cfg)
+    assistance, assistance_target = configure_assistance(cfg)
+    if assistance['assigned_territories'] and len(cfg['agents']['handles']) > cols:
+        raise ValueError('assigned territories require at most one agent per column')
+    if assistance_target is not None:
+        (run_dir / 'assistance_reference.json').write_text(json.dumps(assistance_target) + '\n')
     if plate is not None:
         (run_dir / "target.json").write_text(json.dumps(plate) + "\n", encoding="utf-8")
     budget = int(cfg.get("paint_budget_per_round", 8))
@@ -282,6 +293,7 @@ def _run_config(
                 "task": task,
                 "model": _public_model(model_cfg),
                 "comms": kind,
+                "assistance": assistance,
             },
             indent=2,
         )
@@ -337,8 +349,10 @@ def _run_config(
                     events,
                     comms_enabled,
                     prompt_dir,
-                    plate,
+                    plate if plate is not None else (assistance_target if assistance['reference_image'] else None),
                     budget,
+                    assistance,
+                    assistance_target,
                 )
                 actions = _act(
                     slots, observations, concurrent=cfg["agents"].get("type") == "llm"
@@ -356,6 +370,16 @@ def _run_config(
                     )
                     for slot in slots
                 ]
+                for slot, prep in zip(slots, prepared):
+                    peer_lines = set(getattr(comms, 'native_read', {}).get(slot.agent_id, []))
+                    violations = []
+                    if assistance['require_messages'] and not prep.messages:
+                        violations.append('required_message_missing')
+                    if assistance['require_peer_acks'] and peer_lines and not (set(prep.acks) & peer_lines):
+                        violations.append('required_peer_ack_missing')
+                    for reason in violations:
+                        _write(events, {'type': 'assistance_violation', 'reason': reason, 'run': run_id,
+                                        'round': round_num, 'agent_id': slot.agent_id, 'applied': False})
                 _resolve_renames(slots, prepared)
                 _log_rejections(prepared, slots, run_id, round_num, events)
                 if cfg.get("abort_on_model_failure", False) and any(
@@ -384,6 +408,15 @@ def _run_config(
                     (canvas_dir / f"round_{round_num:02d}.json").write_text(
                         json.dumps(snapshot, indent=2) + "\n", encoding="utf-8"
                     )
+
+                frame = canvas_dir / f"round_{round_num:02d}.json"
+                checkpoint = json.loads((run_dir / 'config.json').read_text())
+                checkpoint['last_completed_round'] = round_num
+                checkpoint['checkpoint_frame'] = str(frame.relative_to(run_dir))
+                checkpoint['checkpoint_sha256'] = hashlib.sha256(frame.read_bytes()).hexdigest()
+                temporary = run_dir / 'config.json.tmp'
+                temporary.write_text(json.dumps(checkpoint, indent=2) + '\n')
+                os.replace(temporary, run_dir / 'config.json')
 
                 if on_round is not None:
                     on_round(
@@ -460,6 +493,7 @@ def _run_config(
         else None,
         "swarmchat": comms.metadata() if kind == "swarmchat" else None,
         "swarmchat_errors": len(getattr(comms, "remote_errors", [])),
+        "assistance": assistance,
         "supplier": supplier_cfg,
     }
     (run_dir / "config.json").write_text(
@@ -623,6 +657,8 @@ def _observe(
     prompt_dir: Path,
     plate: list[str] | None,
     paint_budget: int,
+    assistance: dict | None = None,
+    assistance_target: list[str] | None = None,
 ):
     observations = {}
     if hasattr(comms, "begin_round"):
@@ -682,6 +718,11 @@ def _observe(
             paint_budget=paint_budget,
             catalog=" ".join(supplier.catalog),
         )
+        if assistance:
+            extra = assistance_instructions(assistance, assistance_target, canvas, slot.index,
+                                            len(slots), slot.palette, paint_budget)
+            if extra:
+                observations[slot.index] += '\n\nOptional experimental assistance:\n' + extra
         (prompt_dir / f"round_{round_num:02d}_slot-{slot.index}.txt").write_text(
             observations[slot.index] + "\n", encoding="utf-8"
         )
