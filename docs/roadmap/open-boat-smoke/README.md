@@ -1,0 +1,11 @@
+# Open-ended boat smoke test
+
+Four agents were asked to create a recognizable boat on a shared 24×16 canvas. No target image, preassigned territory, candidate paints, required messages, required acknowledgment or JSON response schema was provided. The shared task still has 8 paints and at most 2 messages per agent per round, a palette, valid-action checking, and synchronous frozen round views. This is an exploratory single-seed four-round run, not a controlled evaluation of communication or boat quality.
+
+All 16 model calls completed using `nvidia/nemotron-3.5-super-vl:free`, temperature 0.2, reasoning disabled, with no retries and $0 reported cost. Native SwarmChat delivered 16 voluntary messages and recorded 24 accepted acknowledgment actions. Of 128 applied paints, 94 repeated the existing color; 28 cells were painted in the final frame. Sixty-six paint events were counted as overwrites by the existing scorer. Two over-budget actions were rejected; color supplier events show 4 grants and 17 denials. These categories need not sum to 128. A read receipt or acknowledgment does not establish understanding. The final image can be inspected in `final.png`; no automatic boat-quality score has been assigned.
+
+A first-round message proposed a hull, cabin, mast and sail. Other agents described their own starting areas; subsequent messages show overlapping hull and mast plans. Four short rounds and one seed cannot establish stable behavior or a causal effect.
+
+Preflight verified the pinned endpoint's zero prompt/completion price and reported remaining quota of 904 before the run. A shared budget limited requests to 32; 16 attempts were made. The task implementation, config, prompt and runner changes were on source commit `89f6a0b106eff72ad8c48a47287d852dff19dca6`. The later convenience launcher was not used for this run. The manifest's git_commit is a local reconstruction, not the GitHub source commit.
+
+`evidence.tar.gz` contains exact local traces (including prompts actually sent and raw responses), events, prompt snapshots, config, canvas frames and scores. SHA-256: `1dbd43dc6e3549a94c43ee7dce02f0d074a445b4f49ff4493d1009df8884a482`. It excludes SwarmChat server state and credentials. The reproducibility command is `python -m swarm_canvas.open_boat_check`; free model availability, provider behavior and output may vary over time.

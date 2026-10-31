@@ -1,0 +1,34 @@
+condition: open_boat_swarmchat
+run_code: open_boat
+seed: 11
+rounds: 4
+grid: {cols: 24, rows: 16}
+agents:
+  count: 4
+  handles: [a1, a2, a3, a4]
+  type: llm
+paint_budget_per_round: 8
+palette: [S, W, Y, B, w, P, G, K]
+supplier:
+  catalog: [O, R, Gy, L]
+  swarm_budget: 4
+comms:
+  kind: swarmchat
+  messages_per_round: 2
+  max_chars: 200
+  acks_enabled: true
+  inbox_context_lines: 20
+  backend: local
+model:
+  provider: openrouter
+  name: nvidia/nemotron-3.5-super-vl:free
+  temperature: 0.2
+  max_tokens: 1600
+  reasoning_enabled: false
+  output_kind: judge
+output_dir: runs/
+abort_on_model_failure: true
+task:
+  mode: free_creation
+  goal: Create a recognizable boat together on the shared canvas.
+  open_coordination: true

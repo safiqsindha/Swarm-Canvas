@@ -355,3 +355,28 @@ def test_peer_ack_schema_limits_choices_to_exposed_peer_ids():
     cfg.allowed_ack_lines = []
     call_model([{"role": "user", "content": "test"}], cfg)
     assert payloads[1]["response_format"]["json_schema"]["schema"]["properties"]["acks"]["maxItems"] == 0
+
+
+def test_open_boat_has_goal_but_no_hidden_target_or_territory(tmp_path):
+    from swarm_canvas.prompts_render import render_system
+    goal = 'Create a recognizable boat together on the shared canvas.'
+    prompt = render_system('a1', 'S W', 'open_boat', 'swarmchat',
+                           task_mode='free_creation', agent_id='slot-0', goal=goal,
+                           open_coordination=True)
+    assert goal in prompt
+    assert 'assigned columns' not in prompt
+    assert 'You may keep a scratchpad' in prompt
+    cfg = _cfg(kind='swarmchat', output_dir=str(tmp_path), rounds=1,
+               task={'mode': 'free_creation', 'goal': goal, 'open_coordination': True})
+    result = run_config(cfg, render=False)
+    manifest = json.loads((result.run_dir / 'config.json').read_text())
+    assert manifest['task']['goal'] == goal
+    assert goal in (result.run_dir / 'prompts_rendered/system_slot-0.txt').read_text()
+    assert not (result.run_dir / 'target.json').exists()
+    assert result.scores['target_accuracy'] is None
+
+
+def test_goal_must_be_valid_before_run(tmp_path):
+    cfg = _cfg(output_dir=str(tmp_path), task={'mode': 'free_creation', 'goal': ''})
+    with pytest.raises(ValueError, match='goal'):
+        run_config(cfg, render=False)

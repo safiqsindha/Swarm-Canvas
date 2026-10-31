@@ -46,6 +46,6 @@ def test_budget_blocks_extra_requests():
 
 
 def test_archived_gate_evidence_and_fingerprint_verify():
-    results = larger_pilot.verify_readiness()
-    assert [r['seed'] for r in results] == [4, 5, 6]
-    assert [r['correct_cells'] for r in results] == [124, 120, 89]
+    # The open-goal feature changes runner/prompt sources; old evidence must not unlock a new pilot.
+    with pytest.raises(ValueError, match='readiness source changed'):
+        larger_pilot.verify_readiness()
