@@ -1,5 +1,9 @@
 # Swarm Canvas
 
+![Exploratory swarm replay](docs/evidence/retained-notes-seed11/replay.gif)
+
+In one exploratory run, an agent claimed "Canvas complete" with 209 cells still blank at the end of that round. Another later cited that claim and stopped painting. [Inspect the public evidence](docs/evidence/retained-notes-seed11/README.md).
+
 A research harness for observing how language-model agents communicate and paint a shared scene. Our goal is autonomous coordination from a plain-text description, followed by experiments with swarm size, model mix, canvas size, and optional assistance.
 
 **Native SwarmChat is required for our swarm experiments. Development inference uses OpenRouter free models exclusively.**
@@ -84,3 +88,5 @@ Never commit credentials. Exclude native swarmchat databases and recovery tokens
 Reference access, retained notes, leaders, and other assistance are explicit interventions that can be turned off. The main goal remains observing a swarm act from a plain-text goal.
 
 The [harness guide](docs/harness-guide.md) preserves detailed CLI commands, condition definitions, remote SwarmChat setup, tracing configuration, and historical pilot instructions.
+
+See the [accelerated research roadmap](docs/research-roadmap.md) for the shortest path from this example to a preregistered replication.
