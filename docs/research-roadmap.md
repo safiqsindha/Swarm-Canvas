@@ -6,7 +6,7 @@ Adapted from the supplied Swarm Canvas Roadmap. This plan separates an explorato
 
 Lead with the retained-notes seed-11 run: an agent posted "Canvas complete" at round 12; the post-round canvas had 175 painted and 209 blank cells. At round 18 another agent explicitly cited that note and said no further paints were needed. These are observations, not a causal estimate of social influence or a result about all models.
 
-Deliverables: public GIF, final frame, event log, all round frames, scratchpads and prompts, experiment source, reference, hashes, and a reproduction command. Keep native credentials/databases out. This slice supplies public evidence for this post; older account-specific evidence links still need migration before claiming the entire project is publicly reproducible.
+Deliverables: public GIF, final frame, event log, all round frames, scratchpads and prompts, experiment source, reference, hashes, and a reproduction command. Keep native credentials/databases out. The seven exploratory evidence archives are collected under docs/evidence/archives; anonymous access and fresh-clone reproducibility still need independent verification before making a public reproducibility claim.
 
 The README should begin with the replay, the specific observation, and run instructions. Preserve limitations and the broader findings. Verify a clean checkout, tests, and public evidence links before tagging v0.1. A draft PR is not a release tag. Freeze inference/prompt behavior after selecting the study revision.
 

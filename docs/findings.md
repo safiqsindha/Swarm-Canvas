@@ -18,7 +18,7 @@ Original runs made 73 HTTP attempts; later runs made 72. Over-budget proposals r
 
 Replay found 365 of the original 419 same-color repaints targeted cells already showing that color at round start. One agent painted J8 through Q8 in S on all six rounds. Repeated catalog requests continued after the shared supply was exhausted.
 
-[Original evidence](https://chatgpt.com/library?file_id=libfile_445f149322088191971fac765486640b&account_id=personal) · [Interface evidence](https://chatgpt.com/library?file_id=libfile_0555c7ab91988191aa2615bb383d2137&account_id=personal)
+[Original evidence](evidence/archives/swarm_pilot_evidence.zip) · [Interface evidence](evidence/archives/swarm_interface_evidence.zip)
 
 ## Reference access and leadership
 
@@ -29,7 +29,7 @@ Replay found 365 of the original 419 same-color repaints targeted cells already 
 
 Together these made 52 HTTP attempts. The leader coordinated while its paints and color requests were suppressed. Followers waited for instructions or catalog colors; the leader asked for colors the reference did not require. Painter count, information access, preparation calls, and timing differed. Neither group could fill 384 cells within six rounds at its allowed paint rate. This does not establish a leadership effect.
 
-[Images](https://chatgpt.com/library?file_id=libfile_45dd2aeb01f48191af92d6f5b0e6cb41&account_id=personal) · [Evidence](https://chatgpt.com/library?file_id=libfile_1df0a709b168819193253ada027c44ef&account_id=personal)
+[Images](evidence/archives/swarm_reference_evidence.zip) · [Evidence](evidence/archives/swarm_reference_evidence.zip)
 
 ## Duration and retained memory
 
@@ -45,7 +45,7 @@ Initial notes described the boat and water. Rewritten scratchpads after round on
 
 With original notes retained in all 96 painting-round inputs, a partial boat, mast, sail, water, and sun survived. Agents announced completion around round 12; later agents cited completion messages and stopped despite blank cells. The run made 100 requests including previews. Visual structure appeared more boat-like to the inspecting assistant, but exact matching was lower and there was no blinded human rating.
 
-[Duration images](https://chatgpt.com/library?file_id=libfile_6f116c1cf950819182ddec6905225d6f&account_id=personal) · [Duration evidence](https://chatgpt.com/library?file_id=libfile_a564a3fdd9488191acef86f6dc7d64cc&account_id=personal) · [Memory images](https://chatgpt.com/library?file_id=libfile_fa4b408175c08191bd3c4656ffdea507&account_id=personal) · [Memory evidence](https://chatgpt.com/library?file_id=libfile_e276d42e367081918a0157aa14eb5b03&account_id=personal)
+[Duration archive](evidence/archives/swarm_duration_evidence.zip) · [Duration evidence](evidence/archives/swarm_duration_evidence.zip) · [Memory archive](evidence/archives/swarm_memory_evidence.zip) · [Memory evidence](evidence/archives/swarm_memory_evidence.zip)
 
 ## Optional looks and completion estimates
 
@@ -60,7 +60,7 @@ The initial turn-costing attempt aborted during round three after failed JSON re
 
 The free-look run was shortened because only 112 free requests remained before launch. All four initially estimated five additional rounds. At the end, one estimated zero, one estimated two, and two provided no valid estimate. Slot-0 selected a free look in round one and painted that round. No API or parsing failures were recorded. One short run does not establish an effect of removing look cost.
 
-[Turn-costing image](https://chatgpt.com/library?file_id=libfile_7b952cc179a0819195b7d7446f0915d0&account_id=personal) · [Both turn-costing attempts](https://chatgpt.com/library?file_id=libfile_c043b7e1873c8191a4e91bad68b2339d&account_id=personal) · [Free-look image](https://chatgpt.com/library?file_id=libfile_40a0d3eb3d1081918bbc5f70edb2bf7d&account_id=personal) · [Free-look evidence](https://chatgpt.com/library?file_id=libfile_519aa34d18f88191b0166763a08f123d&account_id=personal)
+[Turn-costing archive](evidence/archives/swarm_peek_evidence.zip) · [Both turn-costing attempts](evidence/archives/swarm_peek_evidence.zip) · [Free-look archive](evidence/archives/swarm_free_peek_evidence.zip) · [Free-look evidence](evidence/archives/swarm_free_peek_evidence.zip)
 
 ## Conclusions and remaining questions
 
@@ -68,4 +68,4 @@ The harness captures native communication, agent notes, accepted/rejected action
 
 Reliable goal completion, independent completion checking, and useful voluntary inspection remain unestablished. The matched three-seed, 24-round look comparison is prepared and waiting for sufficient quota; it has no results yet. No mixed-model or larger-canvas result is claimed. Langfuse delivery was not independently verified for these probes.
 
-Evidence links belong to the originating ChatGPT account and may require access. Shared archives exclude native SwarmChat databases and recovery credentials. Some historical manifests identify a reconstructed local checkout; use source fingerprints and archived scripts for provenance rather than assuming those checkout SHAs identify the published experiment revision.
+Evidence archives are linked from this repository; their frames can be rendered with the project tools. Archives exclude native SwarmChat databases and recovery credentials. Some historical manifests identify a reconstructed local checkout; use source fingerprints and archived scripts for provenance rather than assuming those checkout SHAs identify the published experiment revision.

@@ -8,7 +8,7 @@ At round 12, slot-3 posted: "#canvas Row16 J-Q W done. Canvas complete." Its rou
 
 [Final frame](final.png) · [Download evidence](run-evidence.zip)
 
-The ZIP contains config.json, events.jsonl, every round's canvas and scratchpads, rendered prompts, experiment.py, target.txt and per-file SHA-256 values. It excludes native SwarmChat databases, authentication/recovery tokens and full generation traces. Full traces remain in the earlier account-specific archive linked from findings.md. These public files substantiate the messages, observations and canvas progression in this example; they are not a full audit of every provider interaction.
+The ZIP contains config.json, events.jsonl, every round's canvas and scratchpads, rendered prompts, experiment.py, target.txt and per-file SHA-256 values. It excludes native SwarmChat databases, authentication/recovery tokens and full generation traces. The earlier memory evidence archive linked from findings.md includes the locally recorded traces. These public files substantiate the messages, observations and canvas progression in this example; they are not a full audit of every provider interaction.
 
 Run the experiment from the repository root with OPENROUTER_API_KEY set:
 
