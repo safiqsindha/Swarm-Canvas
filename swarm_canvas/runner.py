@@ -45,6 +45,7 @@ class Slot:
     palette: list[str]
     scratchpad: str = ""
     model_cfg: ModelConfig | None = None
+    done_round: int | None = None  # set when the agent declares done (stop_action)
 
     @property
     def agent_id(self) -> str:
@@ -417,6 +418,7 @@ def _run_config(
         kind,
         agents,
         catalog_on,
+        options["stop_action"],
     )
     if recovery is None:
         (run_dir / "config.json").write_text(
@@ -496,6 +498,7 @@ def _run_config(
         catalog_on,
     )
     call_offsets = {slot.index: 0 for slot in slots}
+    executed = start_round - 1
     with events_path.open("a" if recovery is not None else "w", encoding="utf-8") as events:
         if recovery is None and options["prefill_background"]:
             for event in redesign.prefill_canvas(canvas, plate, options["prefill_background"], run_id):
@@ -503,6 +506,8 @@ def _run_config(
         for round_num in range(start_round, rounds + 1):
             with observation("process-round", metadata={"round": round_num}):
                 _deliver(supplier, slots, round_num)
+                active = [slot for slot in slots if slot.done_round is None]
+                seen_colors = redesign.colors_of(canvas)  # the round-start snapshot agents see
                 observations = _observe(
                     slots,
                     comms,
@@ -525,7 +530,7 @@ def _run_config(
                     options,
                 )
                 actions = _act(
-                    slots, observations, concurrent=cfg["agents"].get("type") == "llm"
+                    active, observations, concurrent=cfg["agents"].get("type") == "llm"
                 )
                 _log_calls(slots, call_offsets, run_id, round_num, events)
                 prepared = [
@@ -538,10 +543,15 @@ def _run_config(
                         comms_cfg,
                         slots,
                         catalog_on,
+                        options["stop_action"],
                     )
+                    if slot.done_round is None
+                    else Prepared()
                     for slot in slots
                 ]
                 for slot, prep in zip(slots, prepared):
+                    if slot.done_round is not None:
+                        continue
                     peer_lines = set(getattr(comms, 'native_read', {}).get(slot.agent_id, []))
                     violations = []
                     if assistance['require_messages'] and not prep.messages:
@@ -569,6 +579,7 @@ def _run_config(
                 paint_order = list(slots)
                 rng.shuffle(paint_order)
                 _paint(canvas, paint_order, prepared, run_id, round_num, events)
+                _declare_done(slots, prepared, canvas, seen_colors, plate, options, run_id, round_num, events)
                 _scratch(slots, prepared, scratch_dir, round_num)
                 if render:
                     pngs.append(
@@ -601,6 +612,9 @@ def _run_config(
                             "token_totals": _token_totals(slots),
                         }
                     )
+                executed = round_num
+                if options["stop_action"] and all(slot.done_round is not None for slot in slots):
+                    break
 
     if render and pngs:
         from swarm_canvas.render import to_gif
@@ -613,7 +627,8 @@ def _run_config(
         "run": run_id,
         "status": "completed",
         "schema_version": 2,
-        "final_frame": f"canvas/round_{rounds:02d}.json",
+        "final_frame": f"canvas/round_{executed:02d}.json",
+        **({"rounds_executed": executed} if options["stop_action"] else {}),
         "task": task,
         "agents": [
             {
@@ -745,6 +760,7 @@ def _model_config(model: dict) -> ModelConfig:
 def _build_slots(
     handles, agent_type, seed, budget, base_palette, model_cfg, condition, kind, agents,
     catalog_on=True,
+    stop_action=False,
 ) -> list[Slot]:
     slots: list[Slot] = []
     for index, handle in enumerate(handles):
@@ -758,6 +774,7 @@ def _build_slots(
                 model_cfg,
                 paint_budget=budget,
                 catalog_enabled=catalog_on,
+                stop_action=stop_action,
                 fake_responses=list(model_cfg.fake_responses)
                 if model_cfg.fake_responses
                 else None,
@@ -849,6 +866,8 @@ def _observe(
     remaining = max(0, supplier.swarm_budget - supplier.granted_total)
     feedback = previous_results(Path(events.name), round_num) if interface and interface['action_results'] else {}
     for slot in slots:
+        if slot.done_round is not None:
+            continue  # a finished agent takes no turn and reads nothing
         viewer = f"slot-{slot.index}"
         lines = comms.inbox(viewer, round_num)
         shown = [line.number for line in lines]
@@ -910,6 +929,8 @@ def _observe(
                 observations[slot.index] += '\n\nOptional experimental assistance:\n' + extra
         if options is not None and options["prefill_background"]:
             observations[slot.index] += '\n\n' + redesign.prefill_note(options["prefill_background"])
+        if options is not None and options["stop_action"]:
+            observations[slot.index] += '\n\n' + redesign.done_note()
         if interface:
             extra = interface_instructions(interface, slot.palette, supplier.catalog if catalog_on else [],
                                            feedback.get(slot.agent_id, []), round_num)
@@ -957,7 +978,8 @@ def _act(slots: list[Slot], observations: dict, concurrent: bool) -> dict:
 
 
 def _prepare(
-    slot, action, round_num, budget, comms_enabled, comms_cfg, slots, catalog_on=True
+    slot, action, round_num, budget, comms_enabled, comms_cfg, slots, catalog_on=True,
+    stop_action=False,
 ) -> Prepared:
     taken = {other.handle for other in slots if other.index != slot.index}
     max_messages = int(comms_cfg.get("messages_per_round", 2))
@@ -973,6 +995,7 @@ def _prepare(
         max_chars=max_chars,
         taken_handles=taken,
         catalog_enabled=catalog_on,
+        stop_action=stop_action,
     )
 
 
@@ -1189,6 +1212,39 @@ def _paint(canvas, order, prepared, run_id, round_num, events) -> None:
     for event in paint_events:
         event["run"] = run_id
         event["round"] = round_num
+        _write(events, event)
+
+
+def _declare_done(slots, prepared, canvas, seen_colors, plate, options, run_id, round_num, events) -> None:
+    """Log a `done` event for each agent that declared done this round, then retire it."""
+    after_colors = redesign.colors_of(canvas)
+    background = set(options["background"])
+    for slot, prep in zip(slots, prepared):
+        if not prep.done or slot.done_round is not None:
+            continue
+        slot.done_round = round_num
+        seen = redesign.incomplete_counts(seen_colors, plate, background)
+        after = redesign.incomplete_counts(after_colors, plate, background)
+        event = {
+            "type": "done",
+            "run": run_id,
+            "round": round_num,
+            "agent": slot.handle,
+            "agent_id": slot.agent_id,
+            "blank_cells_seen": seen["blank_total"],
+            "blank_cells_after": after["blank_total"],
+        }
+        if plate is not None:
+            event.update(
+                blank_nonbg_seen=seen["blank_nonbg"],
+                incorrect_nonbg_seen=seen["incorrect_nonbg"],
+                blank_nonbg_after=after["blank_nonbg"],
+                incorrect_nonbg_after=after["incorrect_nonbg"],
+            )
+            fragment = (options["fragments"] or {}).get(slot.index)
+            if fragment is not None:
+                own = redesign.incomplete_counts(after_colors, plate, background, fragment.cells)
+                event.update(fragment_blank_after=own["blank_nonbg"], fragment_incorrect_after=own["incorrect_nonbg"])
         _write(events, event)
 
 

@@ -48,6 +48,10 @@ def configure(cfg: dict, plate: list[str] | None) -> dict:
         if absent:
             raise ValueError(f"task.prefill_background colors not in the target: {absent}")
         settings["prefill_background"] = colors
+    stop_action = cfg.get("stop_action", False)
+    if not isinstance(stop_action, bool):
+        raise ValueError("stop_action must be a boolean")
+    settings["stop_action"] = stop_action
     settings["fragments"] = None
     if "reference_split" in task:
         if (cfg.get("assistance") or {}).get("suggested_paints"):
@@ -58,7 +62,7 @@ def configure(cfg: dict, plate: list[str] | None) -> dict:
             plate,
             set(settings["prefill_background"]),
         )
-    settings["active"] = bool(present)
+    settings["active"] = bool(present) or "stop_action" in cfg
     return settings
 
 
@@ -66,7 +70,7 @@ def manifest(settings: dict) -> dict | None:
     """What goes into config.json. None when no redesign option is on."""
     if not settings["active"]:
         return None
-    out = {key: settings[key] for key in ("prefill_background", "background")}
+    out = {key: settings[key] for key in ("prefill_background", "background", "stop_action")}
     if settings["fragments"]:
         out["reference_split"] = reference_split.manifest(settings["fragments"])
     return out
@@ -109,3 +113,29 @@ def split_target(fragment: reference_split.Fragment) -> dict:
         "target_block_file": "target_block_split.txt",
         "target_values": {"description": fragment.description, "cell_count": len(fragment.cells)},
     }
+
+
+def done_note() -> str:
+    return read_prompt("redesign_done.txt")
+
+
+def colors_of(canvas: Canvas) -> dict:
+    """A frozen {(col, row): color} view, used as the round-start snapshot."""
+    return {pos: state.color for pos, state in canvas.cells.items() if state.color}
+
+
+def incomplete_counts(colors: dict, plate: list[str] | None, background, cells=None) -> dict:
+    """Blank and wrong cells among the non-background target cells (or `cells`)."""
+    blank = wrong = 0
+    total_blank = len(plate) * len(plate[0]) - len(colors) if plate else None
+    if plate:
+        for row, line in enumerate(plate):
+            for col, want in enumerate(line):
+                if want in background or (cells is not None and (col, row) not in cells):
+                    continue
+                have = colors.get((col, row))
+                if have is None:
+                    blank += 1
+                elif have != want:
+                    wrong += 1
+    return {"blank_nonbg": blank, "incorrect_nonbg": wrong, "blank_total": total_blank}

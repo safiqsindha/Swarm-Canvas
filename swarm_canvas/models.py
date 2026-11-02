@@ -41,6 +41,7 @@ class ModelConfig:
     require_coordination_fields: bool = False
     allowed_ack_lines: list[int] | None = None
     catalog_enabled: bool = True
+    stop_action: bool = False
 
 
 _COLUMNS = [chr(ord("A") + i) for i in range(24)]
@@ -260,6 +261,8 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
         schema["properties"]["paints"]["maxItems"] = cfg.paint_budget
         if not cfg.catalog_enabled:
             schema["properties"].pop("requests")
+        if cfg.stop_action:
+            schema["properties"]["done"] = {"type": "boolean"}
         if cfg.require_coordination_fields:
             schema["required"] = ["messages", "acks", "paints"]
         if cfg.allowed_ack_lines is not None:

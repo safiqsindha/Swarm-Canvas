@@ -19,6 +19,7 @@ class Prepared:
     rejections: list[dict] = field(default_factory=list)
     rename_to: str | None = None
     scratchpad: str | None = None
+    done: bool = False
     passed: bool = False
     parse_error: bool = False
     raw: str = ""
@@ -61,6 +62,7 @@ def validate_action(
     max_chars: int,
     taken_handles: set[str] | None = None,
     catalog_enabled: bool = True,
+    stop_action: bool = False,
 ) -> Prepared:
     prepared = Prepared()
     if isinstance(action, dict) and (
@@ -247,6 +249,12 @@ def validate_action(
     if isinstance(scratch, str):
         prepared.scratchpad = scratch[:2000]
 
+    if stop_action and "done" in action:
+        if isinstance(action["done"], bool):
+            prepared.done = action["done"]
+        else:
+            prepared.rejections.append({"type": "invalid", "reason": "done_not_bool"})
+
     did_anything = bool(
         prepared.paints
         or prepared.messages
@@ -254,6 +262,7 @@ def validate_action(
         or prepared.requests
         or prepared.rename_to
         or prepared.scratchpad is not None
+        or prepared.done
     )
     if not did_anything and not prepared.rejections:
         prepared.passed = True

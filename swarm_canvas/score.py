@@ -143,6 +143,19 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
                         "output_tokens": output_tokens,
                         "tokens": input_tokens + output_tokens,
                     }
+    stop_action = bool(config.get("redesign", {}).get("stop_action"))
+    done_events = sorted(
+        (e for e in events if e.get("type") == "done"), key=lambda e: int(e.get("round", 0))
+    )
+    done_rounds = {}
+    done_incomplete_by_agent = {}
+    for e in done_events:
+        who = str(e.get("agent_id") or e.get("agent") or "")
+        done_rounds.setdefault(who, int(e["round"]))
+        if "blank_nonbg_after" in e:  # reconstruction only; free creation has no target
+            done_incomplete_by_agent.setdefault(
+                who, e["blank_nonbg_after"] + e["incorrect_nonbg_after"] > 0
+            )
     calls = [e for e in events if e.get("type") == "model_call"]
     successful = [e for e in calls if e.get("status") == "ok"]
     costs = [e.get("cost_usd") for e in successful]
@@ -176,6 +189,14 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
         "wasted_destroyed_correct": wasted_destroyed if plate else None,
         "neutral_paints": neutral if plate else None,
         "prefill_cells": counts.get("prefill", 0),
+        "stop_action": stop_action,
+        "rounds_executed": int(config.get("rounds_executed", config["rounds"])),
+        "first_done_round": min(done_rounds.values()) if done_rounds else None,
+        "done_rounds": done_rounds if stop_action else None,
+        "done_while_incomplete": (
+            any(done_incomplete_by_agent.values()) if stop_action and plate else None
+        ),
+        "done_while_incomplete_by_agent": done_incomplete_by_agent if stop_action and plate else None,
         "paints": paint_count,
         "invalid": counts.get("invalid", 0),
         "over_budget": counts.get("over_budget", 0),
@@ -216,10 +237,11 @@ def _final_snapshot(run_dir: Path) -> dict:
     config = json.loads((run_dir / "config.json").read_text())
     if config.get("schema_version", 1) >= 2:
         frame = run_dir / config["final_frame"]
+        last = int(config.get("rounds_executed", config["rounds"]))  # earlier only if every agent declared done
         if (
             frame.resolve()
             != (
-                run_dir / "canvas" / f"round_{int(config['rounds']):02d}.json"
+                run_dir / "canvas" / f"round_{last:02d}.json"
             ).resolve()
         ):
             raise ValueError("manifest final frame does not match configured rounds")
