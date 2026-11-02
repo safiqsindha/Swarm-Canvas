@@ -60,6 +60,11 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
         if plate
         else None
     )
+    background = set(config.get("redesign", {}).get("background", BACKGROUND_DEFAULT))
+    nonbg = [cell for cell, color in expected.items() if color not in background]
+    nonbg_matches = (
+        sum(painted.get(c, {}).get("color") == expected[c] for c in nonbg) if nonbg else None
+    )
     events = _read_events(run_dir / "events.jsonl")
     counts: dict[str, int] = {}
     per_agent: dict[str, dict] = {}
@@ -68,6 +73,9 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
     input_tokens = output_tokens = 0
     reached = None
     accuracy_by_round = []
+    nonbg_by_round = []
+    nonbg_reached = None
+    useful = wasted_same = wasted_destroyed = neutral = 0
     by_round: dict[int, list[dict]] = {}
     for event in events:
         by_round.setdefault(int(event.get("round", 0)), []).append(event)
@@ -101,6 +109,15 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
             redundant += previous == color
             if plate and previous == expected[cell] and color != expected[cell]:
                 destroyed += 1
+            if plate:
+                if previous == color:
+                    wasted_same += 1
+                elif color == expected[cell]:
+                    useful += 1
+                elif previous == expected[cell]:
+                    wasted_destroyed += 1
+                else:
+                    neutral += 1
             replay[cell] = color
             paint_count += 1
         if plate:
@@ -115,6 +132,17 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
                 }
+            if nonbg:
+                nonbg_accuracy = sum(replay.get(c) == expected[c] for c in nonbg) / len(nonbg)
+                nonbg_by_round.append({"round": number, "accuracy": round(nonbg_accuracy, 6)})
+                if nonbg_reached is None and nonbg_accuracy >= 0.9:
+                    nonbg_reached = {
+                        "round": number,
+                        "paints": paint_count,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "tokens": input_tokens + output_tokens,
+                    }
     calls = [e for e in events if e.get("type") == "model_call"]
     successful = [e for e in calls if e.get("status") == "ok"]
     costs = [e.get("cost_usd") for e in successful]
@@ -137,6 +165,17 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
         "redundant_paints": redundant,
         "accuracy_by_round": accuracy_by_round,
         "threshold_90": reached,
+        "nonbackground_cells": len(nonbg) if plate else None,
+        "nonbackground_matches": nonbg_matches,
+        "nonbackground_accuracy": round(nonbg_matches / len(nonbg), 4) if nonbg_matches is not None else None,
+        "nonbackground_by_round": nonbg_by_round,
+        "rounds_to_nonbg_threshold": nonbg_reached,
+        "useful_paints": useful if plate else None,
+        "wasted_paints": wasted_same + wasted_destroyed if plate else None,
+        "wasted_same_color": wasted_same if plate else None,
+        "wasted_destroyed_correct": wasted_destroyed if plate else None,
+        "neutral_paints": neutral if plate else None,
+        "prefill_cells": counts.get("prefill", 0),
         "paints": paint_count,
         "invalid": counts.get("invalid", 0),
         "over_budget": counts.get("over_budget", 0),
