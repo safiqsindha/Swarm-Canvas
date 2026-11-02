@@ -98,6 +98,8 @@ def render_turn(
     catalog: str = "",
     agent_id: str = "painter",
     catalog_enabled: bool = True,
+    target_block_file: str = "target_block.txt",
+    target_values: dict | None = None,
 ) -> str:
     suffix = "" if catalog_enabled else "_nocatalog"
     if comms_enabled:
@@ -109,7 +111,7 @@ def render_turn(
         reply_rules = read_prompt(f"reply_none{suffix}.txt")
     reply_rules = fill(reply_rules, {"paint_budget": paint_budget})
     target_block = (
-        fill(read_prompt("target_block.txt"), {"target": "\n".join(target)})
+        fill(read_prompt(target_block_file), {"target": "\n".join(target), **(target_values or {})})
         if target
         else ""
     )

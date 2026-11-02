@@ -359,6 +359,11 @@ def _run_config(
         (run_dir / 'assistance_reference.json').write_text(json.dumps(assistance_target) + '\n')
     if plate is not None:
         (run_dir / "target.json").write_text(json.dumps(plate) + "\n", encoding="utf-8")
+    if options["fragments"]:
+        (run_dir / "reference_fragments.json").write_text(json.dumps({
+            f"slot-{index}": {"spec": fragment.spec, "cells": fragment.names(), "grid": list(fragment.lines)}
+            for index, fragment in sorted(options["fragments"].items())
+        }, indent=2) + "\n", encoding="utf-8")
     budget = int(cfg.get("paint_budget_per_round", 8))
     base_palette = [str(color) for color in cfg["palette"]]
     handles = [str(handle) for handle in cfg["agents"]["handles"]]
@@ -472,7 +477,7 @@ def _run_config(
                 kind,
                 agent_count=len(slots),
                 paint_budget=budget,
-                task_mode=task.get("mode", "free_creation"),
+                task_mode=redesign.objective_mode(task.get("mode", "free_creation"), options),
                 agent_id=slot.agent_id,
                 goal=task.get("goal"),
                 open_coordination=task.get("open_coordination", False),
@@ -485,7 +490,7 @@ def _run_config(
         condition,
         kind,
         budget,
-        task.get("mode", "free_creation"),
+        redesign.objective_mode(task.get("mode", "free_creation"), options),
         task.get("goal"),
         task.get("open_coordination", False),
         catalog_on,
@@ -892,8 +897,9 @@ def _observe(
             scratchpad=slot.scratchpad,
             inbox_lines=formatted,
             comms_enabled=comms_enabled,
-            target=plate,
             paint_budget=paint_budget,
+            **(redesign.split_target(options["fragments"][slot.index])
+               if options and options["fragments"] else {"target": plate}),
             catalog=" ".join(supplier.catalog) if catalog_on else "",
             catalog_enabled=catalog_on,
         )

@@ -6,12 +6,13 @@ exactly as before. See docs/roadmap/study-redesign.md.
 
 from __future__ import annotations
 
+from swarm_canvas import reference_split
 from swarm_canvas.engine import Canvas, Paint, cell_name
 from swarm_canvas.prompts_render import fill, read_prompt
 
 BACKGROUND_DEFAULT = ("S", "W")
 PREFILL_HANDLE = "prefill"
-TASK_KEYS = ("prefill_background", "background")
+TASK_KEYS = ("prefill_background", "background", "reference_split")
 
 
 def _color_list(value, name: str, palette: set[str]) -> list[str]:
@@ -47,6 +48,16 @@ def configure(cfg: dict, plate: list[str] | None) -> dict:
         if absent:
             raise ValueError(f"task.prefill_background colors not in the target: {absent}")
         settings["prefill_background"] = colors
+    settings["fragments"] = None
+    if "reference_split" in task:
+        if (cfg.get("assistance") or {}).get("suggested_paints"):
+            raise ValueError("task.reference_split cannot be combined with assistance.suggested_paints")
+        settings["fragments"] = reference_split.resolve(
+            task["reference_split"],
+            [str(h) for h in cfg["agents"]["handles"]],
+            plate,
+            set(settings["prefill_background"]),
+        )
     settings["active"] = bool(present)
     return settings
 
@@ -55,7 +66,10 @@ def manifest(settings: dict) -> dict | None:
     """What goes into config.json. None when no redesign option is on."""
     if not settings["active"]:
         return None
-    return {key: settings[key] for key in ("prefill_background", "background")}
+    out = {key: settings[key] for key in ("prefill_background", "background")}
+    if settings["fragments"]:
+        out["reference_split"] = reference_split.manifest(settings["fragments"])
+    return out
 
 
 def prefill_canvas(canvas: Canvas, plate: list[str], colors: list[str], run_id: str) -> list[dict]:
@@ -81,3 +95,17 @@ def prefill_canvas(canvas: Canvas, plate: list[str], colors: list[str], run_id: 
 
 def prefill_note(colors: list[str]) -> str:
     return fill(read_prompt("redesign_prefill.txt"), {"colors": " ".join(colors)})
+
+
+def objective_mode(task_mode: str, settings: dict) -> str:
+    """Selects prompts/objective_<mode>.txt."""
+    return "reconstruction_split" if settings["fragments"] else task_mode
+
+
+def split_target(fragment: reference_split.Fragment) -> dict:
+    """render_turn arguments that replace the shared target with one fragment."""
+    return {
+        "target": list(fragment.lines),
+        "target_block_file": "target_block_split.txt",
+        "target_values": {"description": fragment.description, "cell_count": len(fragment.cells)},
+    }

@@ -1,0 +1,1 @@
+Reproduce the target, but each painter sees only a different piece of it. Your teammates hold the other pieces; together the pieces make up the whole target. Preserve cells that already match. The objective is the fraction of cells with the requested color.
