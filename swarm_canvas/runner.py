@@ -31,7 +31,7 @@ from swarm_canvas.paths import ROOT
 from swarm_canvas.prompts_render import prompt_hashes, render_system, render_turn
 from swarm_canvas.render import write_canvas_files
 from swarm_canvas.score import load_plate, score_run
-from swarm_canvas.supplier import Supplier
+from swarm_canvas.supplier import Supplier, catalog_enabled as supplier_catalog_enabled
 from swarm_canvas.validate import Prepared, validate_action
 from swarm_canvas.tracing import observation, trace_run, record_event
 
@@ -292,6 +292,7 @@ def _validate_config(cfg: dict, agents: list | None) -> None:
                         "Remote SwarmChat requires real tokens for every slot"
                     )
     _task(cfg)  # validate objective before allocating or calling models
+    supplier_catalog_enabled(cfg.get("supplier"))
     assistance, _ = configure_assistance(cfg)
     configure_interface(cfg)
     if assistance['assigned_territories'] and len(handles) > 24:
@@ -317,7 +318,9 @@ def _task(cfg: dict) -> tuple[dict, list[str] | None]:
     plate = load_plate(path)
     if len(plate) != 16 or any(len(row) != 24 for row in plate):
         raise ValueError("target must be 24 columns by 16 rows")
-    available = set(cfg["palette"]) | set(cfg.get("supplier", {}).get("catalog", []))
+    available = set(cfg["palette"])
+    if supplier_catalog_enabled(cfg.get("supplier")):
+        available |= set(cfg.get("supplier", {}).get("catalog", []))
     if set("".join(plate)) - available:
         raise ValueError("target contains colors unavailable to painters")
     task["mode"] = mode
@@ -387,9 +390,11 @@ def _run_config(
         )
     if recovery is None and comms_enabled and log_path is not None:
         log_path.write_text(comms.render(), encoding="utf-8")
+    catalog_on = supplier_catalog_enabled(supplier_cfg)
     supplier = Supplier(
         [str(color) for color in supplier_cfg.get("catalog", [])],
         swarm_budget=int(supplier_cfg.get("swarm_budget", 4)),
+        enabled=catalog_on,
     )
     canvas = Canvas(cols=cols, rows=rows)
     model_cfg = _model_config(cfg.get("model") or {})
@@ -403,6 +408,7 @@ def _run_config(
         condition,
         kind,
         agents,
+        catalog_on,
     )
     if recovery is None:
         (run_dir / "config.json").write_text(
@@ -466,6 +472,7 @@ def _run_config(
                 agent_id=slot.agent_id,
                 goal=task.get("goal"),
                 open_coordination=task.get("open_coordination", False),
+                catalog_enabled=catalog_on,
             )
     _write_system_prompts(
         prompt_dir,
@@ -477,6 +484,7 @@ def _run_config(
         task.get("mode", "free_creation"),
         task.get("goal"),
         task.get("open_coordination", False),
+        catalog_on,
     )
     call_offsets = {slot.index: 0 for slot in slots}
     with events_path.open("a" if recovery is not None else "w", encoding="utf-8") as events:
@@ -501,6 +509,7 @@ def _run_config(
                     assistance,
                     assistance_target,
                     interface,
+                    catalog_on,
                 )
                 actions = _act(
                     slots, observations, concurrent=cfg["agents"].get("type") == "llm"
@@ -515,6 +524,7 @@ def _run_config(
                         comms_enabled,
                         comms_cfg,
                         slots,
+                        catalog_on,
                     )
                     for slot in slots
                 ]
@@ -719,7 +729,8 @@ def _model_config(model: dict) -> ModelConfig:
 
 
 def _build_slots(
-    handles, agent_type, seed, budget, base_palette, model_cfg, condition, kind, agents
+    handles, agent_type, seed, budget, base_palette, model_cfg, condition, kind, agents,
+    catalog_on=True,
 ) -> list[Slot]:
     slots: list[Slot] = []
     for index, handle in enumerate(handles):
@@ -728,10 +739,11 @@ def _build_slots(
             agent.handle = handle
         elif agent_type == "llm":
             palette_text = " ".join(base_palette)
-            system = render_system(handle, palette_text, condition, kind)
+            system = render_system(handle, palette_text, condition, kind, catalog_enabled=catalog_on)
             own_cfg = replace(
                 model_cfg,
                 paint_budget=budget,
+                catalog_enabled=catalog_on,
                 fake_responses=list(model_cfg.fake_responses)
                 if model_cfg.fake_responses
                 else None,
@@ -773,6 +785,7 @@ def _write_system_prompts(
     task_mode: str,
     goal: str | None = None,
     open_coordination: bool = False,
+    catalog_on: bool = True,
 ) -> None:
     palette_text = " ".join(base_palette)
     for slot in slots:
@@ -787,6 +800,7 @@ def _write_system_prompts(
             agent_id=slot.agent_id,
             goal=goal,
             open_coordination=open_coordination,
+            catalog_enabled=catalog_on,
         )
         (prompt_dir / f"system_slot-{slot.index}.txt").write_text(
             text + "\n", encoding="utf-8"
@@ -811,6 +825,7 @@ def _observe(
     assistance: dict | None = None,
     assistance_target: list[str] | None = None,
     interface: dict | None = None,
+    catalog_on: bool = True,
 ):
     observations = {}
     if hasattr(comms, "begin_round"):
@@ -869,7 +884,8 @@ def _observe(
             comms_enabled=comms_enabled,
             target=plate,
             paint_budget=paint_budget,
-            catalog=" ".join(supplier.catalog),
+            catalog=" ".join(supplier.catalog) if catalog_on else "",
+            catalog_enabled=catalog_on,
         )
         if assistance:
             extra = assistance_instructions(assistance, assistance_target, canvas, slot.index,
@@ -877,7 +893,7 @@ def _observe(
             if extra:
                 observations[slot.index] += '\n\nOptional experimental assistance:\n' + extra
         if interface:
-            extra = interface_instructions(interface, slot.palette, supplier.catalog,
+            extra = interface_instructions(interface, slot.palette, supplier.catalog if catalog_on else [],
                                            feedback.get(slot.agent_id, []), round_num)
             if extra:
                 observations[slot.index] += '\n\n' + extra
@@ -923,7 +939,7 @@ def _act(slots: list[Slot], observations: dict, concurrent: bool) -> dict:
 
 
 def _prepare(
-    slot, action, round_num, budget, comms_enabled, comms_cfg, slots
+    slot, action, round_num, budget, comms_enabled, comms_cfg, slots, catalog_on=True
 ) -> Prepared:
     taken = {other.handle for other in slots if other.index != slot.index}
     max_messages = int(comms_cfg.get("messages_per_round", 2))
@@ -938,6 +954,7 @@ def _prepare(
         max_messages=max_messages,
         max_chars=max_chars,
         taken_handles=taken,
+        catalog_enabled=catalog_on,
     )
 
 

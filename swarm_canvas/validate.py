@@ -60,6 +60,7 @@ def validate_action(
     max_messages: int,
     max_chars: int,
     taken_handles: set[str] | None = None,
+    catalog_enabled: bool = True,
 ) -> Prepared:
     prepared = Prepared()
     if isinstance(action, dict) and (
@@ -229,6 +230,12 @@ def validate_action(
     raw_requests = action.get("requests") or []
     if raw_requests and not isinstance(raw_requests, list):
         prepared.rejections.append({"type": "invalid", "reason": "requests_not_list"})
+        raw_requests = []
+    if not catalog_enabled:
+        if raw_requests:
+            prepared.rejections.append(
+                {"type": "invalid", "reason": "catalog_disabled", "field": "requests"}
+            )
         raw_requests = []
     for item in raw_requests:
         if not isinstance(item, str) or not item.strip():
