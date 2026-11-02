@@ -1,0 +1,51 @@
+# Redesigned study arm (swarm-size sweep, N=8). agents.type is random so this runs offline with no model
+# calls. For a live run swap `agents.type` to `llm`; the pinned free model below is then used.
+# Fixed team allowance: 32 paints per round, so each of the 8 agents gets 4.
+# The target is split into 8 fragments; comms are SwarmChat as in redesign_split_comms.yaml.
+condition: redesign_size_8
+run_code: rdz8
+seed: 1
+rounds: 24
+grid:
+  cols: 24
+  rows: 16
+agents:
+  count: 8
+  handles: [a1, a2, a3, a4, a5, a6, a7, a8]
+  type: random
+paint_budget_per_round: 4
+palette: [S, W, Y, B, w, P, G, K]
+# Catalog is parked in the redesign study: no catalog text in prompts, requests rejected.
+supplier:
+  catalog: [O, R, Gy, L]
+  swarm_budget: 0
+  enabled: false
+stop_action: true
+comms:
+  kind: swarmchat
+  messages_per_round: 2
+  max_chars: 200
+  acks_enabled: true
+  inbox_context_lines: 20
+  server_url: ''
+  backend: local
+model:
+  provider: openrouter
+  name: nvidia/nemotron-3.5-super-vl:free
+  temperature: 0.2
+  max_tokens: 1600
+  reasoning_enabled: false
+output_dir: runs/
+task:
+  mode: reconstruction
+  target: targets/sun_boat.txt
+  prefill_background: [S, W]
+  reference_split:
+    a1: {colors: [Y], cols: [A, S]}  # sun, left
+    a2: {colors: [Y], cols: [T, X]}  # sun, right
+    a3: {colors: [w], rows: [1, 4], cols: [A, C]}  # cloud, left
+    a4: {colors: [w], rows: [1, 4], cols: [D, X]}  # cloud, right
+    a5: {colors: [B], cols: [A, K]}  # hull, left
+    a6: {colors: [B], cols: [L, X]}  # hull, right
+    a7: {colors: [K, P], rows: [7, 11]}  # mast
+    a8: {colors: [w], rows: [7, 11]}  # sail

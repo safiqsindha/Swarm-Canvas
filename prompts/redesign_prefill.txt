@@ -1,0 +1,1 @@
+BACKGROUND PREFILL: before round 1 the harness painted every target cell whose color is {colors}. Those cells already appear on the canvas. Spend your paints on the cells that are still blank or wrong.

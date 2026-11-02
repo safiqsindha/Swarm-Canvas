@@ -8,6 +8,7 @@ from pathlib import Path
 
 from swarm_canvas.engine import cell_name
 from swarm_canvas.paths import TARGETS
+from swarm_canvas.redesign import BACKGROUND_DEFAULT, PREFILL_HANDLE
 
 
 def load_plate(path: Path | None = None) -> list[str]:
@@ -59,6 +60,11 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
         if plate
         else None
     )
+    background = set(config.get("redesign", {}).get("background", BACKGROUND_DEFAULT))
+    nonbg = [cell for cell, color in expected.items() if color not in background]
+    nonbg_matches = (
+        sum(painted.get(c, {}).get("color") == expected[c] for c in nonbg) if nonbg else None
+    )
     events = _read_events(run_dir / "events.jsonl")
     counts: dict[str, int] = {}
     per_agent: dict[str, dict] = {}
@@ -67,6 +73,9 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
     input_tokens = output_tokens = 0
     reached = None
     accuracy_by_round = []
+    nonbg_by_round = []
+    nonbg_reached = None
+    useful = wasted_same = wasted_destroyed = neutral = 0
     by_round: dict[int, list[dict]] = {}
     for event in events:
         by_round.setdefault(int(event.get("round", 0)), []).append(event)
@@ -84,6 +93,10 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
                 identity, {"paints": 0, "messages": 0, "acks": 0, "requests": 0}
             )
             bucket[metric] += 1
+    # Harness prefill is canvas state, not agent work: seed the replay, count nothing.
+    for event in by_round.get(0, []):
+        if event.get("type") == "prefill" and event.get("applied"):
+            replay[event["cell"]] = event["color"]
     for number in range(1, int(config["rounds"]) + 1):
         for event in by_round.get(number, []):
             if event.get("type") == "model_call" and event.get("status") == "ok":
@@ -96,6 +109,15 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
             redundant += previous == color
             if plate and previous == expected[cell] and color != expected[cell]:
                 destroyed += 1
+            if plate:
+                if previous == color:
+                    wasted_same += 1
+                elif color == expected[cell]:
+                    useful += 1
+                elif previous == expected[cell]:
+                    wasted_destroyed += 1
+                else:
+                    neutral += 1
             replay[cell] = color
             paint_count += 1
         if plate:
@@ -110,6 +132,30 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
                 }
+            if nonbg:
+                nonbg_accuracy = sum(replay.get(c) == expected[c] for c in nonbg) / len(nonbg)
+                nonbg_by_round.append({"round": number, "accuracy": round(nonbg_accuracy, 6)})
+                if nonbg_reached is None and nonbg_accuracy >= 0.9:
+                    nonbg_reached = {
+                        "round": number,
+                        "paints": paint_count,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "tokens": input_tokens + output_tokens,
+                    }
+    stop_action = bool(config.get("redesign", {}).get("stop_action"))
+    done_events = sorted(
+        (e for e in events if e.get("type") == "done"), key=lambda e: int(e.get("round", 0))
+    )
+    done_rounds = {}
+    done_incomplete_by_agent = {}
+    for e in done_events:
+        who = str(e.get("agent_id") or e.get("agent") or "")
+        done_rounds.setdefault(who, int(e["round"]))
+        if "blank_nonbg_after" in e:  # reconstruction only; free creation has no target
+            done_incomplete_by_agent.setdefault(
+                who, e["blank_nonbg_after"] + e["incorrect_nonbg_after"] > 0
+            )
     calls = [e for e in events if e.get("type") == "model_call"]
     successful = [e for e in calls if e.get("status") == "ok"]
     costs = [e.get("cost_usd") for e in successful]
@@ -124,12 +170,33 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
         "target_accuracy": round(matches / total, 4) if matches is not None else None,
         "colors_used": sorted({item["color"] for item in painted.values()}),
         "overwrites": sum(
-            bool(e.get("overwrote")) for e in events if e.get("type") == "paint"
+            bool(e.get("overwrote")) and e.get("overwrote") != PREFILL_HANDLE
+            for e in events
+            if e.get("type") == "paint"
         ),
         "correct_cells_destroyed": destroyed if plate else None,
         "redundant_paints": redundant,
         "accuracy_by_round": accuracy_by_round,
         "threshold_90": reached,
+        "nonbackground_cells": len(nonbg) if plate else None,
+        "nonbackground_matches": nonbg_matches,
+        "nonbackground_accuracy": round(nonbg_matches / len(nonbg), 4) if nonbg_matches is not None else None,
+        "nonbackground_by_round": nonbg_by_round,
+        "rounds_to_nonbg_threshold": nonbg_reached,
+        "useful_paints": useful if plate else None,
+        "wasted_paints": wasted_same + wasted_destroyed if plate else None,
+        "wasted_same_color": wasted_same if plate else None,
+        "wasted_destroyed_correct": wasted_destroyed if plate else None,
+        "neutral_paints": neutral if plate else None,
+        "prefill_cells": counts.get("prefill", 0),
+        "stop_action": stop_action,
+        "rounds_executed": int(config.get("rounds_executed", config["rounds"])),
+        "first_done_round": min(done_rounds.values()) if done_rounds else None,
+        "done_rounds": done_rounds if stop_action else None,
+        "done_while_incomplete": (
+            any(done_incomplete_by_agent.values()) if stop_action and plate else None
+        ),
+        "done_while_incomplete_by_agent": done_incomplete_by_agent if stop_action and plate else None,
         "paints": paint_count,
         "invalid": counts.get("invalid", 0),
         "over_budget": counts.get("over_budget", 0),
@@ -170,10 +237,11 @@ def _final_snapshot(run_dir: Path) -> dict:
     config = json.loads((run_dir / "config.json").read_text())
     if config.get("schema_version", 1) >= 2:
         frame = run_dir / config["final_frame"]
+        last = int(config.get("rounds_executed", config["rounds"]))  # earlier only if every agent declared done
         if (
             frame.resolve()
             != (
-                run_dir / "canvas" / f"round_{int(config['rounds']):02d}.json"
+                run_dir / "canvas" / f"round_{last:02d}.json"
             ).resolve()
         ):
             raise ValueError("manifest final frame does not match configured rounds")

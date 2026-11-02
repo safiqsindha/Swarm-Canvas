@@ -34,14 +34,15 @@ def prompt_hashes() -> dict[str, str]:
     return found
 
 
-def comms_rules_file(condition: str, kind: str) -> str:
+def comms_rules_file(condition: str, kind: str, catalog_enabled: bool = True) -> str:
     if kind == "doc_log":
         return "comms_doc.txt"
     if kind == "swarmchat":
         return "comms_chat.txt"
+    suffix = "" if catalog_enabled else "_nocatalog"
     if condition.startswith("c0"):
-        return "comms_c0.txt"
-    return "comms_c1.txt"
+        return f"comms_c0{suffix}.txt"
+    return f"comms_c1{suffix}.txt"
 
 
 def render_system(
@@ -56,10 +57,14 @@ def render_system(
     agent_id: str = "painter",
     goal: str | None = None,
     open_coordination: bool = False,
+    catalog_enabled: bool = True,
 ) -> str:
-    rules = read_prompt(comms_rules_file(condition, kind))
+    rules = read_prompt(comms_rules_file(condition, kind, catalog_enabled))
+    system_file = "system_open_coordination" if open_coordination else "system"
+    if not catalog_enabled:
+        system_file += "_nocatalog"
     return fill(
-        read_prompt("system_open_coordination.txt" if open_coordination else "system.txt"),
+        read_prompt(system_file + ".txt"),
         {
             "handle": handle,
             "agent_id": agent_id,
@@ -92,22 +97,26 @@ def render_turn(
     paint_budget: int = 8,
     catalog: str = "",
     agent_id: str = "painter",
+    catalog_enabled: bool = True,
+    target_block_file: str = "target_block.txt",
+    target_values: dict | None = None,
 ) -> str:
+    suffix = "" if catalog_enabled else "_nocatalog"
     if comms_enabled:
         body = "\n".join(inbox_lines or []) or "(none yet)"
         inbox_block = fill(read_prompt("inbox_block.txt"), {"lines": body})
-        reply_rules = read_prompt("reply_comms.txt")
+        reply_rules = read_prompt(f"reply_comms{suffix}.txt")
     else:
         inbox_block = ""
-        reply_rules = read_prompt("reply_none.txt")
+        reply_rules = read_prompt(f"reply_none{suffix}.txt")
     reply_rules = fill(reply_rules, {"paint_budget": paint_budget})
     target_block = (
-        fill(read_prompt("target_block.txt"), {"target": "\n".join(target)})
+        fill(read_prompt(target_block_file), {"target": "\n".join(target), **(target_values or {})})
         if target
         else ""
     )
     return fill(
-        read_prompt("turn.txt"),
+        read_prompt(f"turn{suffix}.txt"),
         {
             "round": round_num,
             "rounds": rounds,

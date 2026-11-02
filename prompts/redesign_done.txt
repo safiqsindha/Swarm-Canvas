@@ -1,0 +1,1 @@
+DONE: you may include "done": true in your JSON when you believe your work is finished. Your paints in this reply still apply. After you declare done you take no further turns and cannot paint, read, or reply again; your teammates keep going. Omit "done" to keep playing.

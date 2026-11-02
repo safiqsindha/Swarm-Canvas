@@ -84,6 +84,7 @@ Never commit credentials. Exclude native swarmchat databases and recovery tokens
 2. Evaluate recognizable output separately from background-dominated pixel agreement, and check completion claims against actual state.
 3. Test swarm sizes and mixed models with documented paint and compute budgets.
 4. Expand canvas size after those comparisons run reliably. The current runner validates a 24 × 16 grid.
+5. Run the opt-in study redesign (prefilled background, split reference, done action, non-background scoring, fixed-allowance swarm-size sweep). See [study redesign](docs/roadmap/study-redesign.md); its configs are `configs/redesign_*.yaml` and run offline with random agents.
 
 Reference access, retained notes, leaders, and other assistance are explicit interventions that can be turned off. The main goal remains observing a swarm act from a plain-text goal.
 

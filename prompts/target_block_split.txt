@@ -1,0 +1,4 @@
+YOUR PIECE OF THE TARGET. You hold only this piece; your teammates hold the rest, and no one sees the whole target.
+{target}
+A ? marks a cell outside your piece; its color is not shown to you. Your piece is {description} ({cell_count} cells).
+Reproduce your piece's color codes at the same coordinates. Blank cells count as incorrect.

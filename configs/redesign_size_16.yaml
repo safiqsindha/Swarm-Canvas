@@ -1,0 +1,59 @@
+# Redesigned study arm (swarm-size sweep, N=16). agents.type is random so this runs offline with no model
+# calls. For a live run swap `agents.type` to `llm`; the pinned free model below is then used.
+# Fixed team allowance: 32 paints per round, so each of the 16 agents gets 2.
+# The target is split into 16 fragments; comms are SwarmChat as in redesign_split_comms.yaml.
+condition: redesign_size_16
+run_code: rdz16
+seed: 1
+rounds: 24
+grid:
+  cols: 24
+  rows: 16
+agents:
+  count: 16
+  handles: [a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16]
+  type: random
+paint_budget_per_round: 2
+palette: [S, W, Y, B, w, P, G, K]
+# Catalog is parked in the redesign study: no catalog text in prompts, requests rejected.
+supplier:
+  catalog: [O, R, Gy, L]
+  swarm_budget: 0
+  enabled: false
+stop_action: true
+comms:
+  kind: swarmchat
+  messages_per_round: 2
+  max_chars: 200
+  acks_enabled: true
+  inbox_context_lines: 20
+  server_url: ''
+  backend: local
+model:
+  provider: openrouter
+  name: nvidia/nemotron-3.5-super-vl:free
+  temperature: 0.2
+  max_tokens: 1600
+  reasoning_enabled: false
+output_dir: runs/
+task:
+  mode: reconstruction
+  target: targets/sun_boat.txt
+  prefill_background: [S, W]
+  reference_split:
+    a1: {colors: [Y], cols: [A, R]}  # sun, columns A-R
+    a2: {colors: [Y], cols: [S, S]}  # sun, column S
+    a3: {colors: [Y], cols: [T, T]}  # sun, column T
+    a4: {colors: [Y], cols: [U, X]}  # sun, columns U-X
+    a5: {colors: [w], rows: [1, 4], cols: [A, B]}  # cloud, columns A-B
+    a6: {colors: [w], rows: [1, 4], cols: [C, C]}  # cloud, column C
+    a7: {colors: [w], rows: [1, 4], cols: [D, D]}  # cloud, column D
+    a8: {colors: [w], rows: [1, 4], cols: [E, X]}  # cloud, columns E-X
+    a9: {colors: [B], cols: [A, I]}  # hull, columns A-I
+    a10: {colors: [B], cols: [J, K]}  # hull, columns J-K
+    a11: {colors: [B], cols: [L, M]}  # hull, columns L-M
+    a12: {colors: [B], cols: [N, X]}  # hull, columns N-X
+    a13: {colors: [K, P], rows: [7, 8]}  # mast top: K and P, rows 7-8
+    a14: {colors: [K], rows: [9, 10]}  # mast base: K, rows 9-10
+    a15: {colors: [w], rows: [7, 11], cols: [M, M]}  # sail, column M
+    a16: {colors: [w], rows: [7, 11], cols: [N, X]}  # sail, columns N-X
