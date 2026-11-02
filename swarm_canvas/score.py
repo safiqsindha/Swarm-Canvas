@@ -8,6 +8,7 @@ from pathlib import Path
 
 from swarm_canvas.engine import cell_name
 from swarm_canvas.paths import TARGETS
+from swarm_canvas.redesign import BACKGROUND_DEFAULT, PREFILL_HANDLE
 
 
 def load_plate(path: Path | None = None) -> list[str]:
@@ -84,6 +85,10 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
                 identity, {"paints": 0, "messages": 0, "acks": 0, "requests": 0}
             )
             bucket[metric] += 1
+    # Harness prefill is canvas state, not agent work: seed the replay, count nothing.
+    for event in by_round.get(0, []):
+        if event.get("type") == "prefill" and event.get("applied"):
+            replay[event["cell"]] = event["color"]
     for number in range(1, int(config["rounds"]) + 1):
         for event in by_round.get(number, []):
             if event.get("type") == "model_call" and event.get("status") == "ok":
@@ -124,7 +129,9 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
         "target_accuracy": round(matches / total, 4) if matches is not None else None,
         "colors_used": sorted({item["color"] for item in painted.values()}),
         "overwrites": sum(
-            bool(e.get("overwrote")) for e in events if e.get("type") == "paint"
+            bool(e.get("overwrote")) and e.get("overwrote") != PREFILL_HANDLE
+            for e in events
+            if e.get("type") == "paint"
         ),
         "correct_cells_destroyed": destroyed if plate else None,
         "redundant_paints": redundant,

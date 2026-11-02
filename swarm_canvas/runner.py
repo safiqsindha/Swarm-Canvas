@@ -29,6 +29,7 @@ from swarm_canvas.engine import Canvas
 from swarm_canvas.models import ModelConfig, validate_model_policy
 from swarm_canvas.paths import ROOT
 from swarm_canvas.prompts_render import prompt_hashes, render_system, render_turn
+from swarm_canvas import redesign
 from swarm_canvas.render import write_canvas_files
 from swarm_canvas.score import load_plate, score_run
 from swarm_canvas.supplier import Supplier, catalog_enabled as supplier_catalog_enabled
@@ -293,6 +294,7 @@ def _validate_config(cfg: dict, agents: list | None) -> None:
                     )
     _task(cfg)  # validate objective before allocating or calling models
     supplier_catalog_enabled(cfg.get("supplier"))
+    redesign.configure(cfg, _task(cfg)[1])
     assistance, _ = configure_assistance(cfg)
     configure_interface(cfg)
     if assistance['assigned_territories'] and len(handles) > 24:
@@ -350,6 +352,7 @@ def _run_config(
     task, plate = _task(cfg)
     assistance, assistance_target = configure_assistance(cfg)
     interface = configure_interface(cfg)
+    options = redesign.configure(cfg, plate)
     if assistance['assigned_territories'] and len(cfg['agents']['handles']) > cols:
         raise ValueError('assigned territories require at most one agent per column')
     if assistance_target is not None:
@@ -425,6 +428,7 @@ def _run_config(
                     "comms": kind,
                     "assistance": assistance,
                     "interface_feedback": interface,
+                    **({"redesign": redesign.manifest(options)} if options["active"] else {}),
                     "resume_config_sha256": _resume_config_hash(cfg),
                     "resume_source_sha256": _resume_source_hash(),
                     "resume_python_version": list(sys.version_info[:3]),
@@ -488,6 +492,9 @@ def _run_config(
     )
     call_offsets = {slot.index: 0 for slot in slots}
     with events_path.open("a" if recovery is not None else "w", encoding="utf-8") as events:
+        if recovery is None and options["prefill_background"]:
+            for event in redesign.prefill_canvas(canvas, plate, options["prefill_background"], run_id):
+                _write(events, event)
         for round_num in range(start_round, rounds + 1):
             with observation("process-round", metadata={"round": round_num}):
                 _deliver(supplier, slots, round_num)
@@ -510,6 +517,7 @@ def _run_config(
                     assistance_target,
                     interface,
                     catalog_on,
+                    options,
                 )
                 actions = _act(
                     slots, observations, concurrent=cfg["agents"].get("type") == "llm"
@@ -656,6 +664,7 @@ def _run_config(
         "assistance": assistance,
         "interface_feedback": interface,
         "supplier": supplier_cfg,
+        **({"redesign": redesign.manifest(options)} if options["active"] else {}),
     }
     (run_dir / "config.json").write_text(
         json.dumps(config_out, indent=2) + "\n", encoding="utf-8"
@@ -826,6 +835,7 @@ def _observe(
     assistance_target: list[str] | None = None,
     interface: dict | None = None,
     catalog_on: bool = True,
+    options: dict | None = None,
 ):
     observations = {}
     if hasattr(comms, "begin_round"):
@@ -892,6 +902,8 @@ def _observe(
                                             len(slots), slot.palette, paint_budget)
             if extra:
                 observations[slot.index] += '\n\nOptional experimental assistance:\n' + extra
+        if options is not None and options["prefill_background"]:
+            observations[slot.index] += '\n\n' + redesign.prefill_note(options["prefill_background"])
         if interface:
             extra = interface_instructions(interface, slot.palette, supplier.catalog if catalog_on else [],
                                            feedback.get(slot.agent_id, []), round_num)
