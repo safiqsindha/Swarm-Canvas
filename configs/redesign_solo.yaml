@@ -1,0 +1,40 @@
+# Redesigned study arm (matched solo baseline). agents.type is random so this runs offline with no model
+# calls. For a live run swap `agents.type` to `llm`; the pinned free model below is then used.
+# One painter with the full reference and 4x the per-agent budget (32 = the 4-agent team's
+# allowance of 4 x 8), so the team and solo arms have equal paint opportunities.
+condition: redesign_solo
+run_code: rdso
+seed: 1
+rounds: 24
+grid:
+  cols: 24
+  rows: 16
+agents:
+  count: 1
+  handles: [a1]
+  type: random
+paint_budget_per_round: 32
+palette: [S, W, Y, B, w, P, G, K]
+# Catalog is parked in the redesign study: no catalog text in prompts, requests rejected.
+supplier:
+  catalog: [O, R, Gy, L]
+  swarm_budget: 0
+  enabled: false
+stop_action: true
+comms:
+  kind: none
+  messages_per_round: 2
+  max_chars: 200
+  acks_enabled: false
+  inbox_context_lines: 20
+model:
+  provider: openrouter
+  name: nvidia/nemotron-3.5-super-vl:free
+  temperature: 0.2
+  max_tokens: 1600
+  reasoning_enabled: false
+output_dir: runs/
+task:
+  mode: reconstruction
+  target: targets/sun_boat.txt
+  prefill_background: [S, W]

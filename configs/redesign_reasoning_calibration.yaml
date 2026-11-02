@@ -1,0 +1,46 @@
+# Reasoning calibration arm. Same as redesign_split_comms.yaml except agents.type: llm and
+# model.reasoning_enabled: true. MAKES LIVE FREE-MODEL CALLS; requires OPENROUTER_API_KEY and quota.
+# Reasoning tokens share model.max_tokens; watch parse_errors in scores.json for truncated replies.
+condition: redesign_reasoning_calibration
+run_code: rdrc
+seed: 1
+rounds: 24
+grid:
+  cols: 24
+  rows: 16
+agents:
+  count: 4
+  handles: [a1, a2, a3, a4]
+  type: llm
+paint_budget_per_round: 8
+palette: [S, W, Y, B, w, P, G, K]
+# Catalog is parked in the redesign study: no catalog text in prompts, requests rejected.
+supplier:
+  catalog: [O, R, Gy, L]
+  swarm_budget: 0
+  enabled: false
+stop_action: true
+comms:
+  kind: swarmchat
+  messages_per_round: 2
+  max_chars: 200
+  acks_enabled: true
+  inbox_context_lines: 20
+  server_url: ''
+  backend: local
+model:
+  provider: openrouter
+  name: nvidia/nemotron-3.5-super-vl:free
+  temperature: 0.2
+  max_tokens: 1600
+  reasoning_enabled: true
+output_dir: runs/
+task:
+  mode: reconstruction
+  target: targets/sun_boat.txt
+  prefill_background: [S, W]
+  reference_split:
+    a1: sun  # sun
+    a2: cloud  # cloud
+    a3: hull  # hull
+    a4: mast_sail  # mast and sail
