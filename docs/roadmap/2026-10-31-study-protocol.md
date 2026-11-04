@@ -109,7 +109,7 @@ not supported for this protocol.
 The paired runner, shared-preview handling, reminder integration, scorecard, per-attempt
 ledgers and restart checks are implemented and exercised with mocked model responses and
 the real local SwarmChat server. `experiments.paired_study` also checks that the selected
-OpenRouter key has a non-resetting remaining allowance no greater than $5. Provider
+OpenRouter key has a non-resetting remaining allowance no greater than $50. Provider
 accounting and other users of the key can affect available allowance; the limit depends
 on OpenRouter enforcement. Use a dedicated key and verify its settings immediately before
 launch. The current reference pilot was exploratory and was not produced by this runner.

@@ -33,7 +33,7 @@ MODEL = 'deepseek/deepseek-v4.1-flash-1017'
 INTERVAL = 4.2
 PER_ATTEMPT_CAP = 200
 PREVIEW_CAP = 24
-MAX_REMAINING_USD = 5.0
+MAX_REMAINING_USD = 50.0
 
 
 def sources():
@@ -76,7 +76,7 @@ def preflight(client, key):
     data = response.json()['data']
     remaining = data.get('limit_remaining')
     if isinstance(remaining, bool) or not isinstance(remaining, (int,float)) or not 0 < remaining <= MAX_REMAINING_USD:
-        raise RuntimeError('The OpenRouter key needs a positive remaining spending limit of at most $5')
+        raise RuntimeError('The OpenRouter key needs a positive remaining spending limit of at most $50')
     if data.get('limit_reset') is not None:
         raise RuntimeError('The OpenRouter key spending limit must not automatically reset during the batch')
     response = client.get('https://openrouter.ai/api/v1/models')

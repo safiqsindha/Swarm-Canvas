@@ -12,7 +12,7 @@ from experiments import paired_study
 def test_preflight_requires_bounded_key_and_pricing():
     def respond(request):
         if request.url.path.endswith('/key'):
-            return httpx.Response(200,json={'data':{'limit_remaining':9}})
+            return httpx.Response(200,json={'data':{'limit_remaining':51}})
         return httpx.Response(200,json={'data':[{'id':paired_study.MODEL,'pricing':{'prompt':'0.0000001','completion':'0.0000005'}}]})
     with httpx.Client(transport=httpx.MockTransport(respond)) as client:
         with pytest.raises(RuntimeError,match='at most'):
