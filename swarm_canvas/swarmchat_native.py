@@ -8,7 +8,9 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import threading
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import uuid4
@@ -303,10 +305,46 @@ class SwarmChatComms:
             raise SwarmChatError("The server did not confirm the native acknowledgment")
         return line
 
+    def _checkpoint_read(self, agent):
+        # Peek is read-only, so a transient failure can safely be retried.
+        for attempt in range(3):
+            try:
+                return self.clients[agent].read(chat=self.channel_id, **{'all': True}, peek=True, limit=1_000_000)['messages']
+            except (ClientError, OSError) as exc:
+                status = getattr(exc, 'status', 0)
+                # Keep diagnostics without recording credentials or server payloads.
+                reason = re.sub(r'(?i)(?:sk-or-v1-|sk-lf-)[a-z0-9_-]+', '[REDACTED]', str(exc))[:300]
+                self.remote_errors.append({'operation': 'checkpoint_read', 'http_status': status,
+                                           'error_type': type(exc).__name__, 'reason': reason})
+                if attempt == 2:
+                    diagnostic = self._diagnose_log_offsets() if self.local else 'not_local'
+                    self.remote_errors[-1]['offset_diagnostic'] = diagnostic
+                    raise SwarmChatError(f'SwarmChat checkpoint read failed (HTTP {status}): {reason}; offsets={diagnostic}') from None
+                time.sleep(0.2 * (attempt + 1))
+
+    def _diagnose_log_offsets(self):
+        """Compare native in-memory offsets to complete disk lines, without mutation."""
+        try:
+            chat = self._store.chats[self.channel_id]
+            with self._store.lock, chat.lock:
+                for file_index, offsets in enumerate(chat.offsets):
+                    with open(chat.path(file_index + 1), 'rb') as source:
+                        for index, expected in enumerate(offsets):
+                            position = source.tell()
+                            if position != expected:
+                                return f'mismatch segment={file_index + 1} entry={index + 1}'
+                            line = source.readline()
+                            if not line.endswith(b'\n'):
+                                return f'incomplete segment={file_index + 1} entry={index + 1}'
+                            json.loads(line)
+                        if source.read(1):
+                            return f'unindexed_data segment={file_index + 1}'
+            return 'offsets_match'
+        except (OSError, ValueError, KeyError, AttributeError):
+            return 'diagnostic_unavailable'
+
     def _recovery_digest(self):
-        views = {agent: self._call(agent, 'read', chat=self.channel_id,
-                                  **{'all': True}, peek=True, limit=1_000_000)['messages']
-                 for agent in self.agent_ids}
+        views = {agent: self._checkpoint_read(agent) for agent in self.agent_ids}
         with self._store.lock:
             positions = {agent: self._store.state[self._users[agent]]['read'].get(self.channel_id, 0)
                          for agent in self.agent_ids}

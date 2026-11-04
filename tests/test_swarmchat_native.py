@@ -135,6 +135,43 @@ def test_native_history_pagination_and_context(native):
     assert [line.text for line in context] == ["note-5", "note-6"]
 
 
+def test_checkpoint_read_retries_without_changing_messages(native, monkeypatch):
+    from swarmchat.client import ClientError
+    native.post('slot-0', 'checkpoint message', 1)
+    client = native.clients['slot-0']
+    original = client.read
+    attempts = []
+    def flaky_read(*args, **kwargs):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise ClientError(400, 'temporary checkpoint error')
+        return original(*args, **kwargs)
+    monkeypatch.setattr(client, 'read', flaky_read)
+    monkeypatch.setattr('swarm_canvas.swarmchat_native.time.sleep', lambda _: None)
+    result = native.checkpoint_state()
+    assert result['digest'] and len(attempts) == 2
+    assert native.remote_errors[-1]['operation'] == 'checkpoint_read'
+
+
+def test_corrupt_native_offset_reproduces_checkpoint_json_error(native, monkeypatch):
+    from pathlib import Path
+    native.post('slot-0', 'diagnostic message', 1)
+    chat = native._store.chats[native.channel_id]
+    seq = chat.messages[-1]
+    file_index, line_index = divmod(seq - 1, chat.segment)
+    original_offset = chat.offsets[file_index][line_index]
+    chat.offsets[file_index][line_index] = Path(chat.path(file_index + 1)).stat().st_size
+    monkeypatch.setattr('swarm_canvas.swarmchat_native.time.sleep', lambda _: None)
+    try:
+        with pytest.raises(SwarmChatError, match='Expecting value'):
+            native.checkpoint_state()
+        assert len(native.remote_errors) == 3
+        assert native.remote_errors[-1]['offset_diagnostic'].startswith('mismatch ')
+    finally:
+        chat.offsets[file_index][line_index] = original_offset
+    assert native.checkpoint_state()['digest']
+
+
 def test_scripted_check_validates_native_receipts_with_no_models(tmp_path):
     from swarm_canvas.swarmchat_check import check_swarmchat
 

@@ -220,7 +220,7 @@ def run_config(
                 "condition": cfg["condition"], "seed": int(cfg["seed"]),
                 "rounds": int(cfg["rounds"]), "prompt_hashes": prompt_hashes(),
                 "git_commit": _git_commit(), "task": _task(cfg)[0],
-                "model_policy": "openrouter_free_only",
+                "model_policy": "openrouter_paid_experiment" if cfg.get('model', {}).get('paid_experiment') is True else "openrouter_free_only",
             }))
             result = _run_config(
                 cfg,
@@ -240,6 +240,9 @@ def run_config(
     except Exception as exc:
         saved = json.loads(manifest.read_text())
         saved.update(status="failed", error_type=type(exc).__name__)
+        from swarm_canvas.swarmchat_native import SwarmChatError
+        if isinstance(exc, SwarmChatError) and 'recorder' in locals():
+            saved['error_detail'] = recorder.mask(str(exc))[:500]
         manifest.write_text(json.dumps(saved, indent=2) + "\n")
         raise
 
@@ -659,7 +662,7 @@ def _run_config(
             "output_kind": model_cfg.output_kind,
             "require_coordination_fields": model_cfg.require_coordination_fields,
             "paint_budget": budget,
-            "policy": "openrouter_free_only",
+            "policy": "openrouter_paid_experiment" if model_cfg.paid_experiment else "openrouter_free_only",
         },
         "prompt_hashes": prompt_hashes(),
         "git_commit": _git_commit(),
@@ -681,6 +684,7 @@ def _run_config(
         else None,
         "swarmchat": comms.metadata() if kind == "swarmchat" else None,
         "swarmchat_errors": len(getattr(comms, "remote_errors", [])),
+        "swarmchat_error_details": getattr(comms, "remote_errors", []),
         "assistance": assistance,
         "interface_feedback": interface,
         "supplier": supplier_cfg,
@@ -744,6 +748,7 @@ def _model_config(model: dict) -> ModelConfig:
     return ModelConfig(
         provider=str(model.get("provider") or "fake"),
         name=str(model.get("name") or ""),
+        paid_experiment=model.get('paid_experiment', False),
         temperature=float(model.get("temperature", 0.7)),
         max_tokens=int(model.get("max_tokens", 600)),
         base_url=model.get("base_url"),

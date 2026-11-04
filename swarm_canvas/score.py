@@ -223,7 +223,7 @@ def score_run(run_dir: str | Path, plate_path: Path | None = None) -> dict:
         "final_hash": config.get("final_hash"),
         "reliability_ok": not any(
             counts.get(k, 0) for k in ("api_error", "agent_error", "parse_error")
-        ),
+        ) and config.get('swarmchat_errors', 0) == 0,
     }
     (run_dir / "scores.json").write_text(json.dumps(scores, indent=2) + "\n")
     return scores

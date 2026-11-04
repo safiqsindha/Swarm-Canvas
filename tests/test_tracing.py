@@ -42,3 +42,22 @@ def test_langfuse_requires_complete_configuration(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="LANGFUSE_SECRET_KEY"):
         with trace_run(tmp_path, {"condition": "c1", "seed": 1, "rounds": 1}):
             pass
+
+
+def test_24_round_concurrent_model_trace_and_native_checkpoints(tmp_path, monkeypatch):
+    from swarm_canvas.agents import LLMAgent
+    from swarm_canvas.runner import run_config
+    from test_rules_and_run import _cfg
+    monkeypatch.setenv('SWARM_CANVAS_TRACING', 'local')
+    def respond(request):
+        return httpx.Response(200, json={'id':'id', 'model':'test/model:free',
+            'choices':[{'message':{'content':'{"messages":["working"],"paints":[]}'}, 'finish_reason':'stop'}],
+            'usage':{'prompt_tokens':1,'completion_tokens':1,'cost':0}})
+    cfg = _cfg(kind='swarmchat', condition='full_trace', agent_type='llm', output_dir=str(tmp_path), rounds=24)
+    agents = [LLMAgent('a'+str(i), ModelConfig(provider='openrouter', name='test/model:free',
+        api_key='test', transport=httpx.MockTransport(respond), output_kind='judge'), '') for i in range(4)]
+    result = run_config(cfg, render=False, agents=agents)
+    records = [json.loads(line) for line in (result.run_dir/'traces.jsonl').read_text().splitlines()]
+    assert sum(x.get('event')=='end' and x.get('name')=='generate-painter-action' for x in records) == 96
+    assert len(list(result.run_dir.glob('boundary_*.json'))) == 24
+    assert records[-1]['event'] == 'export_summary'
