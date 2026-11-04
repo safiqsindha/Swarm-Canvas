@@ -2,7 +2,7 @@ openpyxl
 pillow
 imageio
 pyyaml
-httpx
+httpx[socks]
 pytest
 swarmchat==0.1.0
 langfuse==5.0.4

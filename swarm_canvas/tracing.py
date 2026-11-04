@@ -119,8 +119,9 @@ def trace_run(run_dir, metadata, *, resume=False):
         # Load only after environment configuration; never pass configs/keys as span input.
         from langfuse import Langfuse, propagate_attributes
         client = Langfuse(base_url=host, environment="development", sample_rate=1.0)
-        attributes = propagate_attributes(session_id=run_dir.name, tags=["swarm-canvas", "free-only", str(metadata["condition"])])
+        attributes = propagate_attributes(session_id=run_dir.name, tags=["swarm-canvas", str(metadata.get('model_policy','openrouter_free_only')), str(metadata["condition"])])
     recorder = Recorder(run_dir / "traces.jsonl", run_dir.name, mode, client, resume=resume)
+    recorder.model_policy = metadata.get('model_policy','openrouter_free_only')
     token = _current.set(recorder)
     try:
         with attributes, recorder.observation("run-canvas", input={k: metadata[k] for k in ("condition", "seed", "rounds")}, metadata=metadata) as root:
@@ -153,7 +154,7 @@ def broadcast_context(generation):
         "trace_id": recorder.trace_id, "trace_name": "run-canvas",
         "generation_name": "generate-painter-action",
         "local_observation_id": generation.id, "run_id": recorder.run_id,
-        "environment": "development", "model_policy": "openrouter_free_only",
+        "environment": "development", "model_policy": recorder.model_policy,
     }}
 
 

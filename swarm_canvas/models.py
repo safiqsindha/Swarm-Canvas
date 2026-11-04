@@ -42,6 +42,7 @@ class ModelConfig:
     allowed_ack_lines: list[int] | None = None
     catalog_enabled: bool = True
     stop_action: bool = False
+    paid_experiment: bool = False
 
 
 _COLUMNS = [chr(ord("A") + i) for i in range(24)]
@@ -141,6 +142,8 @@ class ModelCallError(RuntimeError):
 
 def validate_model_policy(cfg: ModelConfig) -> None:
     """Development lock: only fake responses or explicitly free OpenRouter models."""
+    if not isinstance(cfg.paid_experiment, bool):
+        raise ValueError('paid_experiment must be a boolean')
     if not isinstance(cfg.require_coordination_fields, bool):
         raise ValueError("require_coordination_fields must be a boolean")
     if cfg.reasoning_enabled is not None and not isinstance(
@@ -151,6 +154,10 @@ def validate_model_policy(cfg: ModelConfig) -> None:
         raise ValueError(
             "Do not combine disabled reasoning with a reasoning token budget"
         )
+    if cfg.paid_experiment:
+        if cfg.provider == 'openrouter' and cfg.name == 'deepseek/deepseek-v4.1-flash-1017':
+            return
+        raise ValueError('Paid experiment is restricted to the selected DeepSeek model')
     if cfg.provider == "fake":
         return
     if cfg.provider != "openrouter" or not (
@@ -254,7 +261,8 @@ def _openai_compatible(messages: list[dict], cfg: ModelConfig) -> tuple[str, dic
     if cfg.provider == "openrouter":
         payload["provider"] = {
             "allow_fallbacks": False,
-            "max_price": {"prompt": 0, "completion": 0, "request": 0},
+            "max_price": ({"prompt": 0.3, "completion": 1.2} if cfg.paid_experiment else
+                          {"prompt": 0, "completion": 0, "request": 0}),
         }
     if cfg.provider == "openrouter" and cfg.output_kind == "painter":
         schema = copy.deepcopy(_PAINTER_SCHEMA)
