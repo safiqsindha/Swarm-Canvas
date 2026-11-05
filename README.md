@@ -1,30 +1,28 @@
 # Swarm Canvas
 
-![Exploratory swarm replay](docs/evidence/retained-notes-seed11/replay.gif)
+Can a group of language-model agents coordinate to paint a scene? Swarm Canvas is a research harness for watching agents communicate through **SwarmChat** and paint a shared pixel canvas. The long-term goal is to study coordination from a plain-text goal, then scale the number and mix of agents and the size of the canvas.
 
-In one exploratory run, an agent claimed "Canvas complete" with 209 cells still blank at the end of that round. Another later cited that claim and stopped painting. [Inspect the public evidence](docs/evidence/retained-notes-seed11/README.md).
+![Replay of seed 13 and a premature completion claim](docs/evidence/paired-study/seed13-claim.gif)
 
-A research harness for observing how language-model agents communicate and paint a shared scene. Our goal is autonomous coordination from a plain-text description, followed by experiments with swarm size, model mix, canvas size, and optional assistance.
+In this exploratory run, an agent wrote “All 384 cells complete” in round 12, even though the canvas it saw at the start of that round still had 220 blank cells. This is one observed message, not a rate across runs. [See the six-run replay and results](docs/evidence/paired-study/README.md).
 
-**Native SwarmChat is required for our swarm experiments. Development inference uses OpenRouter free models exclusively.**
+## Latest experiment
 
-The current canvas is **24 × 16**. Agents see a shared start-of-round snapshot and submit actions simultaneously. Actions resolve in a seeded shuffled order; later paint wins. Agents have permanent slot IDs, display names, and scratchpads. Reference images are represented as text grids of color codes, not vision inputs.
+Six completed runs used four agents powered by `deepseek/deepseek-v4.1-flash-1017`, a 24 × 16 canvas, and 24 rounds. Each agent received a one-time reference preview and could retain notes; this was an assisted reconstruction experiment, not an unassisted plain-text test. Each pair used a baseline and a reminder-enabled condition, across seeds 11–13.
 
-## Where we are
+**The automatic reminder never fired in any reminder-enabled run.** The results show variation between runs but cannot establish an effect of reminders. One earlier seed-13 attempt was interrupted and replaced; it is retained in the evidence. We did not run the proposed 39-run study.
 
-The harness supports bounded live runs, request accounting, local traces, optional interface feedback, reference-visibility probes, and narrow recovery at verified completed-round boundaries. It has not demonstrated reliable autonomous scene completion. All results below are exploratory.
+![All six completed runs](docs/evidence/paired-study/six-run-comparison.gif)
 
-| Experiment | Observation |
-| --- | --- |
-| Three open-ended six-round runs | Agents exchanged plans, but 419 of 562 applied paints repeated the existing color. |
-| Color legend + previous-action feedback | Repetition was 308 of 530 paints across three later runs. Over-budget proposals increased. |
-| One-time preview vs leader-only reference | Preview group painted 95 cells; leader group painted 27. Painter count and reference access differed. |
-| 24 vs 48 rounds after preview | The longer run eventually painted the entire canvas light blue. Its higher pixel agreement reflected background color, not a successful boat. |
-| Retained preview notes, 24 rounds | A partial boat survived, but agents declared completion and stopped with much of the canvas blank. |
-| Optional look costing a turn, 24 rounds | No agent selected a look. All eventually estimated zero more rounds, despite an incomplete reference. |
-| Optional free look, six rounds | One agent looked in round one and then painted that round. This short run is not directly comparable to 24 rounds. |
+The replays are rendered from saved end-of-round canvases. Blank is beige. Canvas pixels are enlarged without smoothing; the caption about the round-12 claim uses the end-of-round-11 snapshot the agent received.
 
-See [findings and limitations](docs/findings.md) for measurements, failure records, and evidence. Pixel agreement alone can reward a dominant background color.
+[Results, methods, and evidence](docs/evidence/paired-study/README.md) · [Earlier findings](docs/findings.md) · [Research roadmap](docs/research-roadmap.md)
+
+## How the harness works
+
+Agents see a shared start-of-round snapshot and submit actions simultaneously. Actions resolve in a seeded shuffled order; later paint wins. Agents have permanent slot IDs, display names, and scratchpads. Reference images are text grids of color codes, not vision inputs. Assistance such as previews, territories, and feedback can be switched on or off.
+
+The harness has not demonstrated reliable autonomous completion. Background-heavy pixel agreement can overstate success; the results also report matches on the target’s non-background cells. Native SwarmChat is required for swarm experiments. Development defaults to free OpenRouter models; the latest experiment used the explicitly authorized paid model.
 
 ## Quick start
 
@@ -80,14 +78,6 @@ Never commit credentials. Exclude native swarmchat databases and recovery tokens
 
 ## Next steps
 
-1. Complete the matched look-cost comparison across seeds, reporting every attempt.
-2. Evaluate recognizable output separately from background-dominated pixel agreement, and check completion claims against actual state.
-3. Test swarm sizes and mixed models with documented paint and compute budgets.
-4. Expand canvas size after those comparisons run reliably. The current runner validates a 24 × 16 grid.
-5. Run the opt-in study redesign (prefilled background, split reference, done action, non-background scoring, fixed-allowance swarm-size sweep). See [study redesign](docs/roadmap/study-redesign.md); its configs are `configs/redesign_*.yaml` and run offline with random agents.
+The immediate priority is to publish the exploratory results with their limits and close out this study. Future work can improve completion detection, evaluate scene quality beyond background pixels, test less assistance, and scale the swarm and canvas with controlled budgets.
 
-Reference access, retained notes, leaders, and other assistance are explicit interventions that can be turned off. The main goal remains observing a swarm act from a plain-text goal.
-
-The [harness guide](docs/harness-guide.md) preserves detailed CLI commands, condition definitions, remote SwarmChat setup, tracing configuration, and historical pilot instructions.
-
-See the [accelerated research roadmap](docs/research-roadmap.md) for the shortest path from this example to a preregistered replication.
+The [harness guide](docs/harness-guide.md) has detailed commands, condition definitions, tracing configuration, and historical pilot instructions. The [research roadmap](docs/research-roadmap.md) describes follow-on work.
