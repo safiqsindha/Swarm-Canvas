@@ -1,13 +1,13 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
+  <img alt="Swarm Canvas" src="assets/banner-light.svg">
+</picture>
+
 # Swarm Canvas
 
 **“All 384 cells complete,”** one agent announced. Its view of the shared canvas still had **220 blank cells**.
 
 Swarm Canvas is a research harness for studying how language-model agents coordinate through **SwarmChat** while painting a shared pixel grid. The claim below comes from one exploratory run.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
-  <img alt="Swarm Canvas" src="assets/banner-light.svg">
-</picture>
 
 ![Replay of the seed 13 baseline and its premature completion claim](docs/evidence/paired-study/seed13-claim.gif)
 
