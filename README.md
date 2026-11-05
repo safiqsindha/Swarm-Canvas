@@ -1,20 +1,31 @@
 # Swarm Canvas
 
-Can a group of language-model agents coordinate to paint a scene? Swarm Canvas is a research harness for watching agents communicate through **SwarmChat** and paint a shared pixel canvas. The long-term goal is to study coordination from a plain-text goal, then scale the number and mix of agents and the size of the canvas.
+**“All 384 cells complete,”** one agent announced. Its view of the shared canvas still had **220 blank cells**.
 
-![Replay of seed 13 and a premature completion claim](docs/evidence/paired-study/seed13-claim.gif)
+Swarm Canvas is a research harness for studying how language-model agents coordinate through **SwarmChat** while painting a shared pixel grid. The claim below comes from one exploratory run.
 
-In this exploratory run, an agent wrote “All 384 cells complete” in round 12, even though the canvas it saw at the start of that round still had 220 blank cells. This is one observed message, not a rate across runs. [See the six-run replay and results](docs/evidence/paired-study/README.md).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
+  <img alt="Swarm Canvas" src="assets/banner-light.svg">
+</picture>
 
-## Latest experiment
+![Replay of the seed 13 baseline and its premature completion claim](docs/evidence/paired-study/seed13-claim.gif)
 
-Six completed runs used four agents powered by `deepseek/deepseek-v4.1-flash-1017`, a 24 × 16 canvas, and 24 rounds. Each agent received a one-time reference preview and could retain notes; this was an assisted reconstruction experiment, not an unassisted plain-text test. Each pair used a baseline and a reminder-enabled condition, across seeds 11–13.
+## The task and the result
 
-**The automatic reminder never fired in any reminder-enabled run.** The results show variation between runs but cannot establish an effect of reminders. One earlier seed-13 attempt was interrupted and replaced; it is retained in the evidence. We did not run the proposed 39-run study.
+Four agents worked for 24 rounds to reconstruct a 24 × 16 image. Each saw the reference once and could keep notes. Below, the target is next to the final canvas from the same seed-13 baseline run shown above.
+
+![Target boat and the seed-13 baseline final canvas; beige cells are blank](docs/evidence/paired-study/target-vs-seed13.svg)
+
+The final canvas had **217 blank cells**. Across six completed runs, the agents correctly matched 13 to 41 of the target's 51 non-sky, non-water cells. Across those runs, 2,734 of 4,558 applied paints (60.0%) repeated the color already present at the time of application; repeats include actions within the same round and may be intentional.
 
 ![All six completed runs](docs/evidence/paired-study/six-run-comparison.gif)
 
-The replays are rendered from saved end-of-round canvases. Blank is beige. Canvas pixels are enlarged without smoothing; the caption about the round-12 claim uses the end-of-round-11 snapshot the agent received.
+### What these results can and cannot tell us
+
+These are six exploratory assisted reconstruction runs, using `deepseek/deepseek-v4.1-flash-1017` across seeds 11–13. They do not establish performance on unassisted plain-text tasks or a general completion-failure rate. Three runs had a reminder enabled, but it never fired, so the comparison cannot establish a reminder effect. One earlier seed-13 attempt was interrupted and replaced; its record is retained. The proposed 39-run study was not run.
+
+The replays use saved end-of-round canvases. The round-12 claim is paired with the end-of-round-11 snapshot the agent received.
 
 [Results, methods, and evidence](docs/evidence/paired-study/README.md) · [Earlier findings](docs/findings.md) · [Research roadmap](docs/research-roadmap.md)
 
@@ -22,7 +33,7 @@ The replays are rendered from saved end-of-round canvases. Blank is beige. Canva
 
 Agents see a shared start-of-round snapshot and submit actions simultaneously. Actions resolve in a seeded shuffled order; later paint wins. Agents have permanent slot IDs, display names, and scratchpads. Reference images are text grids of color codes, not vision inputs. Assistance such as previews, territories, and feedback can be switched on or off.
 
-The harness has not demonstrated reliable autonomous completion. Background-heavy pixel agreement can overstate success; the results also report matches on the target’s non-background cells. Native SwarmChat is required for swarm experiments. Development defaults to free OpenRouter models; the latest experiment used the explicitly authorized paid model.
+The harness has not demonstrated reliable autonomous completion. Background-heavy pixel agreement can overstate success; the results also report matches on the target’s non-background cells. Native SwarmChat is required for swarm experiments. Development defaults to free OpenRouter models; the six-run study used the paid model named above.
 
 ## Quick start
 
