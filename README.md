@@ -14,6 +14,8 @@ Six completed runs used four agents powered by `deepseek/deepseek-v4.1-flash-101
 
 ![All six completed runs](docs/evidence/paired-study/six-run-comparison.gif)
 
+Across these six runs, 2,734 of 4,558 applied paints (60.0%) repeated the cell color at application time, including repeats within a round. In one final round, all four agents reported the grid appeared or should be complete while the shared view still had 251 blank cells; all 32 proposed paints matched their cells at the start of the round. [Inspect the case and data](docs/evidence/paired-study/README.md).
+
 The replays are rendered from saved end-of-round canvases. Blank is beige. Canvas pixels are enlarged without smoothing; the caption about the round-12 claim uses the end-of-round-11 snapshot the agent received.
 
 [Results, methods, and evidence](docs/evidence/paired-study/README.md) · [Earlier findings](docs/findings.md) · [Research roadmap](docs/research-roadmap.md)
