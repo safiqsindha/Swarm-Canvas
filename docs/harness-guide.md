@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
-    <img src="assets/banner-light.svg" alt="Swarm Canvas" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/banner-dark.svg">
+    <img src="../assets/banner-light.svg" alt="Swarm Canvas" width="100%">
   </picture>
 </p>
 
@@ -123,7 +123,7 @@ This is one sequential development pair, not a multi-seed estimate or a confirma
 
 ## Historical demo
 
-<p align="center"><img src="docs/sitting.gif" width="720" alt="Historical random-painter smoke test"></p>
+<p align="center"><img src="sitting.gif" width="720" alt="Historical random-painter smoke test"></p>
 
 This animation is the original seed-1 random-painter demo, not a live model result. The new manifest and identity formats differ from that historical run.
 
